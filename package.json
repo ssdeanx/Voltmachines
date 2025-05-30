@@ -1,0 +1,59 @@
+{
+  "name": "deanmachines-volt",
+  "private": true,
+  "keywords": [
+    "voltagent",
+    "ai",
+    "agent"
+  ],
+  "license": "MIT",
+  "author": "ssdeanx",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch --env-file=.env ./src ",
+    "start": "node dist/index.js",
+    "volt": "volt"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.2",
+    "@composio/core": "^0.1.12-alpha.14",
+    "@composio/mcp": "^1.0.5",
+    "@libsql/client": "^0.15.8",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@smithery/sdk": "^1.4.3",
+    "@supabase/supabase-js": "^2.49.8",
+    "@voltagent/cli": "^0.1.6",
+    "@voltagent/core": "^0.1.22",
+    "@voltagent/google-ai": "^0.3.11",
+    "@voltagent/supabase": "^0.1.6",
+    "@xenova/transformers": "^2.17.2",
+    "ai": "^4.3.16",
+    "cheerio": "^1.0.0",
+    "composio-core": "^0.5.39",
+    "fs-extra": "^11.3.0",
+    "isomorphic-git": "^1.30.2",
+    "jiti": "^2.4.2",
+    "js-tiktoken": "^1.0.20",
+    "marked": "^15.0.12",
+    "octokit": "^5.0.3",
+    "playwright": "^1.52.0",
+    "yaml": "^2.8.0",
+    "zod": "3.25.34"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@types/eslint": "^9.6.1",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.15.27",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "eslint": "^9.27.0",
+    "jiti": "^2.4.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0"
+  },
+  "overrides": {
+    "zod": "3.25.34"
+  }
+}
