@@ -254,6 +254,53 @@ const conversationId = 'user-session-123';
 await globalMemory.addMessage(message, conversationId);
 ```
 
+```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'primaryColor': '#4baaaa', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f0f0f0'}}}%%
+%%{config: {'flowchart': {'curve': 'linear'}}}%%
+%%{flowchart: {'nodeSpacing': 50, 'rankSpacing': 50, 'rankDirection': 'TB', 'wrap': true}}%%
+%%{flowchart: {'htmlLabels': true}}%%
+%%{flowchart: {'arrowMarkerAbsolute': true}}%%
+%%{flowchart: {'useMaxWidth': true}}%%
+%%{flowchart: {'defaultRenderer': 'dagre'}}%%
+%%{flowchart: {'node': {'shape': 'box', 'style': 'filled', 'fillColor': '#f9f9f9', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
+%%{flowchart: {'edge': {'style': 'solid', 'color': '#4baaaa', 'arrowhead': 'normal', 'arrowType': 'normal'}}}%%
+%%{flowchart: {'subgraph': {'style': 'rounded', 'fillColor': '#e0f7fa', 'strokeColor': '#4baaaa'}}}%%
+%%{flowchart: {'externalActor': {'shape': 'ellipse', 'style': 'filled', 'fillColor': '#ffebee', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
+%%{flowchart: {'externalSystem': {'shape': 'box', 'style': 'filled', 'fillColor': '#e3f2fd', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
+```
+
+```mermaid
+graph TD
+
+    2207["User<br>External Actor"]
+    subgraph 2197["External Systems"]
+        2203["AI APIs<br>Google GenAI, etc."]
+        2204["Web Services &amp; Repositories<br>GitHub, Web Search, etc."]
+        2205["Browser Environment<br>Playwright, etc."]
+        2206["Database Storage<br>LibSQL, etc."]
+    end
+    subgraph 2198["Voltmachines Core<br>Node.js/TypeScript"]
+        2199["Main Application Logic<br>TypeScript"]
+        2200["AI Agents<br>TypeScript"]
+        2201["Agent Tools &amp; Capabilities<br>TypeScript"]
+        2202["Agent Memory &amp; Context<br>TypeScript"]
+        %% Edges at this level (grouped by source)
+        2199["Main Application Logic<br>TypeScript"] -->|Orchestrates| 2200["AI Agents<br>TypeScript"]
+        2199["Main Application Logic<br>TypeScript"] -->|Initializes| 2201["Agent Tools &amp; Capabilities<br>TypeScript"]
+        2199["Main Application Logic<br>TypeScript"] -->|Manages| 2202["Agent Memory &amp; Context<br>TypeScript"]
+        2200["AI Agents<br>TypeScript"] -->|Uses| 2201["Agent Tools &amp; Capabilities<br>TypeScript"]
+        2200["AI Agents<br>TypeScript"] -->|Accesses/Stores in| 2202["Agent Memory &amp; Context<br>TypeScript"]
+    end
+    %% Edges at this level (grouped by source)
+    2207["User<br>External Actor"] -->|Initiates tasks| 2199["Main Application Logic<br>TypeScript"]
+    2199["Main Application Logic<br>TypeScript"] -->|Calls for generation| 2203["AI APIs<br>Google GenAI, etc."]
+    2200["AI Agents<br>TypeScript"] -->|Calls for generation| 2203["AI APIs<br>Google GenAI, etc."]
+    2202["Agent Memory &amp; Context<br>TypeScript"] -->|Uses for embeddings| 2203["AI APIs<br>Google GenAI, etc."]
+    2202["Agent Memory &amp; Context<br>TypeScript"] -->|Persists to/Retrieves from| 2206["Database Storage<br>LibSQL, etc."]
+    2201["Agent Tools &amp; Capabilities<br>TypeScript"] -->|Interacts with| 2204["Web Services &amp; Repositories<br>GitHub, Web Search, etc."]
+    2201["Agent Tools &amp; Capabilities<br>TypeScript"] -->|Controls| 2205["Browser Environment<br>Playwright, etc."]
+```
+
 ## 🤝 **Contributing**
 
 We welcome contributions! Please see our [development tasks](./TASKS.md) for areas where you can help:
