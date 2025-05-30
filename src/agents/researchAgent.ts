@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { webSearchTool, urlFetchTool, textAnalyzerTool, dataFormatterTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 
 
 /**
@@ -27,7 +27,7 @@ const agentConfig = researchAgentConfigSchema.parse({
   factChecking: true,
 });
 
-export const researchAgent = patchAgentMethods(new Agent({
+export const researchAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a research agent. You can:
 - Perform advanced research and fact-finding using web search and URL fetch tools
@@ -37,12 +37,11 @@ export const researchAgent = patchAgentMethods(new Agent({
 Always cite your sources and validate your findings.`,
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  }),
-  model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  }),  model: "models/gemini-2.0-flash-exp",
+  memory: voltAgentMemory,
   hooks: developmentHooks,
   tools: [webSearchTool, urlFetchTool, textAnalyzerTool, dataFormatterTool],
-}));
+});
 
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return researchAgent.generateText(prompt, options);

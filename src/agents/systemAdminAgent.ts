@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { systemInfoTool, webSearchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 
 import type { OnEndHookArgs } from '@voltagent/core';
 
@@ -11,7 +11,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * System admin configuration schema
  */
 const systemAdminConfigSchema = z.object({
-  name: z.string().min(1),
   monitoringInterval: z.number().positive().default(300), // 5 minutes
   alertThresholds: z.object({
     cpu: z.number().min(0).max(100).default(80),
@@ -65,7 +64,6 @@ export type SystemAdminConfig = z.infer<typeof systemAdminConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = systemAdminConfigSchema.parse({
-  name: "system-admin",
   monitoringInterval: 180, // 3 minutes
   alertThresholds: {
     cpu: 75,
@@ -77,8 +75,8 @@ const agentConfig = systemAdminConfigSchema.parse({
   supportedOs: ['windows', 'linux', 'macos'],
 });
 
-export const systemAdminAgent = patchAgentMethods(new Agent({
-  name: agentConfig.name,
+export const systemAdminAgent = new Agent({
+  name: "system-admin",
   instructions: `You are a specialized system administration agent with expertise in:
   
   **Configuration:**
@@ -118,7 +116,7 @@ export const systemAdminAgent = patchAgentMethods(new Agent({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -126,9 +124,8 @@ export const systemAdminAgent = patchAgentMethods(new Agent({
       console.log(`[✅ Agent] systemAdminAgent completed operation for conversation:`, conversationId || 'unknown');
     },
   },
-  tools: [systemInfoTool, webSearchTool],
-}));
-
+  tools: [systemInfoTool, webSearchTool]
+});
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return systemAdminAgent.generateText(prompt, options);
 };

@@ -98,8 +98,8 @@ This project demonstrates a **hierarchical multi-agent architecture** built on V
 # Node.js 18+ required
 node --version
 
-# Install dependencies with pnpm
-pnpm install
+# Install dependencies with npm
+npm install
 ```
 
 ### Basic Usage
@@ -197,26 +197,26 @@ src/
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Start the development server
-pnpm dev
+npm dev
 
 # Run type checking
-pnpm type-check
+npm type-check
 
 # Run linting
-pnpm lint
+npm lint
 ```
 
 ### Building for Production
 
 ```bash
 # Build the project
-pnpm build
+npm build
 
 # Run the built version
-pnpm start
+npm start
 ```
 
 ## 📈 **Performance & Scalability**

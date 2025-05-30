@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { calculatorTool, textAnalyzerTool, dataFormatterTool, systemInfoTool, webSearchTool, urlFetchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 
 import type { OnEndHookArgs } from '@voltagent/core';
 
@@ -55,7 +55,7 @@ const agentConfig = problemSolvingConfigSchema.parse({
   domains: ['technical', 'mathematical', 'analytical', 'creative', 'logical'],
 });
 
-export const problemSolvingAgent = patchAgentMethods(new Agent({
+export const problemSolvingAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a versatile problem-solving agent capable of:
   
@@ -90,7 +90,7 @@ export const problemSolvingAgent = patchAgentMethods(new Agent({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -105,8 +105,7 @@ export const problemSolvingAgent = patchAgentMethods(new Agent({
     systemInfoTool,
     webSearchTool,    urlFetchTool,
   ],
-}));
-
+});
 // Usage:
 // const conversationId = await getOrStartThread('problemSolver', 'main-user');
 // const response = await problemSolvingAgent.generateText('Solve this problem', { userId: 'main-user', conversationId });

@@ -6,8 +6,8 @@ import {
   githubTool, 
   urlFetchTool
 } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 
 import type { OnEndHookArgs } from '@voltagent/core';
 
@@ -87,7 +87,7 @@ const agentConfig = fileManagerConfigSchema.parse({
  * - Project structure management
  * - Documentation and markdown processing
  */
-export const fileManagerAgent = patchAgentMethods(new Agent({
+export const fileManagerAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a specialized file manager and version control agent with expertise in:
 
@@ -141,8 +141,7 @@ All file operations must conform to fileOperationSchema and repository analysis 
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
-  model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  model: "models/gemini-2.0-flash-exp",  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -151,7 +150,7 @@ All file operations must conform to fileOperationSchema and repository analysis 
     },
   },
   tools: [gitTool, githubTool, urlFetchTool],
-}));
+});
 
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return fileManagerAgent.generateText(prompt, options);

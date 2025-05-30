@@ -1,7 +1,7 @@
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
-import { globalMemory } from "../memory/index.js";
-import { developmentHooks } from "./agentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
+import { developmentHooks } from "./voltAgentHooks.js";
 // Import all browser tools from the tools index
 import {
   navigationTool,
@@ -26,7 +26,6 @@ import {
 } from "../tools/index.js";
 import { z } from "zod";
 import type { OnEndHookArgs } from '@voltagent/core';
-import  generateText  from '@voltagent/core';
 /**
  * Browser agent configuration schema (advanced)
  */
@@ -66,7 +65,7 @@ const agentConfig = browserAgentConfigSchema.parse({
   defaultViewport: { width: 1280, height: 720 },
 });
 
-export const browserAgent = patchAgentMethods(new Agent({
+export const browserAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are an advanced browser automation agent capable of:
 
@@ -114,13 +113,13 @@ Remember to be methodical and verify each step of your automation process.`,
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
       const conversationId = args.context?.userContext?.get('conversationId') || undefined;
       console.log(`[✅ Agent] ${agentConfig.name} completed operation for conversation:`, conversationId || 'unknown');
-    },
+    }
   },
   tools: [
     navigationTool,
@@ -141,10 +140,9 @@ Remember to be methodical and verify each step of your automation process.`,
     getVisibleTextTool,
     getVisibleHtmlTool,
     listInteractiveElementsTool,
-    getUserAgentTool,
-  ],
-}));
-
+    getUserAgentTool
+  ]
+});
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return browserAgent.generateText(prompt, options);
 };

@@ -2,10 +2,9 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { calculatorTool, textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 import type { OnEndHookArgs } from '@voltagent/core';
-import  generateText  from '@voltagent/core';
 
 /**
  * Data analysis configuration schema
@@ -52,7 +51,7 @@ const agentConfig = dataAnalysisConfigSchema.parse({
   analysisTypes: ['statistical', 'sentiment', 'pattern', 'trend'],
 });
 
-export const dataAnalysisAgent = patchAgentMethods(new Agent({
+export const dataAnalysisAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a specialized data analysis agent with expertise in:
   - Mathematical calculations and statistical analysis (max ${agentConfig.maxDataPoints} data points)
@@ -71,7 +70,7 @@ export const dataAnalysisAgent = patchAgentMethods(new Agent({
   }),
   model: "models/gemini-2.0-flash-exp",
   tools: [calculatorTool, textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -79,8 +78,7 @@ export const dataAnalysisAgent = patchAgentMethods(new Agent({
       console.log(`[✅ Agent] dataAnalysisAgent completed operation for conversation:`, conversationId || 'unknown');
     },
   },
-
-}));
+});
 
 
 // Usage:

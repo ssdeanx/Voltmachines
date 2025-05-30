@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 
 /**
  * Documentation agent configuration schema
@@ -28,7 +28,7 @@ const agentConfig = documentationAgentConfigSchema.parse({
   citation: true,
 });
 
-export const documentationAgent = patchAgentMethods(new Agent({
+export const documentationAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a documentation agent. You can:
 - Generate, summarize, and format technical documentation
@@ -41,11 +41,10 @@ Always ensure documentation is accurate, well-structured, and properly cited.`,
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: developmentHooks,
   tools: [textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
-}));
-
+});
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return documentationAgent.generateText(prompt, options);
 };

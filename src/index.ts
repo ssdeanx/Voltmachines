@@ -1,21 +1,20 @@
 // Main VoltAgent index file
 
 import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi'; // Or the specific library you install
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
-extendZodWithOpenApi(z); // Critical for openapi usage
+extendZodWithOpenApi(z);
+export { z };
 
-export { z }; // Export the extended z to be used throughout your project
-
-import { VoltAgent, Agent, VoltAgentExporter, LibSQLStorage } from "@voltagent/core";
+import { VoltAgent, Agent, VoltAgentExporter } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { initializeMCPTools } from "./tools/mcp.js";
 import path from "node:path";
 import { delegateTaskTool, getAvailableAgents } from "./tools/delegationTool.js";
 import { agentRegistry } from "./agents/index.js";
-import { developmentHooks } from "./agents/agentHooks.js";
+import { developmentHooks } from "./agents/voltAgentHooks.js";
 import { supervisorRetriever } from "./memory/supervisorRetriever.js";
-import { globalMemory } from "./memory/index.js";
+import { voltAgentMemory } from "./memory/voltAgentMemory.js";
 /**
  * VoltAgent system configuration schema
  */
@@ -86,16 +85,6 @@ const systemConfig = voltAgentConfigSchema.parse({
   },
 });
 
-// Configure LibSQL Memory Storage
-const memoryStorage = new LibSQLStorage({
-  // Use local SQLite file for development, Turso for production
-  url: systemConfig.databaseUrl,
-  authToken: systemConfig.authToken, // Required for Turso
-  tablePrefix: systemConfig.tablePrefix, // Default prefix
-  storageLimit: systemConfig.storageLimit, // Max messages per conversation
-  debug: systemConfig.debug, // Enable debug logging
-});
-
 // Initialize MCP tools
 const mcpTools = await initializeMCPTools();
 
@@ -149,34 +138,40 @@ Always explain your reasoning for agent selection and provide clear task descrip
   }),
   model: "gemini-2.5-flash-preview-05-20",
   tools: [...mcpTools, delegateTaskTool],
-  memory: globalMemory,
+  memory: voltAgentMemory,
   subAgents: Object.values(agentRegistry),
   hooks: {
     ...developmentHooks,
-    onHandoff: async (handoffInfo) => {
-      console.log(`[🔄 Handoff] Task being handed off to ${handoffInfo.agent.name}`);
-      await memoryStorage.addMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        content: `Delegation handoff to: ${handoffInfo.agent.name}`,
-        type: 'text',
-        createdAt: new Date().toISOString(),
-      });
+    onStart: async ({ agent, context }) => {
+      // Set a session ID for this supervisor operation
+      const sessionId = `supervisor-session-${Date.now()}`;
+      context.userContext.set("sessionId", sessionId);
+      context.userContext.set("supervisorName", agent.name);
+      
+      console.log(`[🏛️ Supervisor] ${agent.name} starting operation with SessionID: ${sessionId}`);
+      
+      // Call the base hook
+      if (developmentHooks.onStart) {
+        await developmentHooks.onStart({ agent, context });
+      }
+    },
+    onHandoff: async ({ agent, source }) => {
+      console.log(`[🔄 Handoff] Supervisor delegating to ${agent.name}${source ? ` from ${source.name}` : ''}`);
+      
+      // The userContext will be automatically cloned to the sub-agent
+      // No manual memory operations needed - VoltAgent handles this
+      
+      // Call the base hook if it exists
+      if (developmentHooks.onHandoff) {
+        await developmentHooks.onHandoff({ agent, source });
+      }
     },
   },
   retriever: supervisorRetriever,
 });
 
-const prompt = "${prompt}";
-const response = await supervisorAgent.generateText(prompt, {
-  provider: {
-    thinkingConfig: {
-      thinkingBudget: 0,
-    },
-  },
-});
-console.log(response.text);
-
+// Remove the broken test code that was causing issues
+// This will be replaced with proper usage later
 
 // Remove broken patching code for agent.llm and agent.model
 
@@ -204,7 +199,7 @@ function listAgents(): AgentCapability[] {
  */
 async function getSystemStatus(): Promise<SystemStatus> {
   const agents = listAgents();
-  const conversations = await memoryStorage.getConversations('main-user');
+  const conversations = await voltAgentMemory.getConversations('main-user');
   
   const status: SystemStatus = {
     timestamp: new Date().toISOString(),
@@ -228,51 +223,29 @@ async function getSystemStatus(): Promise<SystemStatus> {
 }
 
 /**
- * VoltAgent Memory Best Practices (2025-05-28)
+ * VoltAgent Memory Best Practices (2025-05-30)
  * - Always provide userId and conversationId to agent calls for correct memory scoping and context continuity.
- * - Use the ConversationMemory class to manage threads/conversations for each user.
- * - To start a new thread: call memoryStorage.startConversation(agentName) and use the returned conversationId.
+ * - Use the LibSQLStorage class to manage threads/conversations for each user.
+ * - To start a new thread: call voltAgentMemory.startConversation(resourceId) and use the returned conversationId.
  * - To continue a thread: pass the same userId and conversationId to agent.generateText, stream
  *
  * Example usage:
- *   const conversationId = await memoryStorage.startConversation('supervisor');
+ *   const conversationId = await voltAgentMemory.startConversation('supervisor');
  *   const response = await supervisorAgent.generateText('Hello', { userId: 'main-user', conversationId });
  */
-
-// Utility: Start or switch to a thread for a user
-export async function getOrStartThread(agentName: string): Promise<string> {
-  // Always returns a valid conversationId for the agent/user
-  return await globalMemory.startConversation(agentName);
-}
-
-/**
- * Utility: List all threads for a user
- * @param userId - User ID (default: 'main-user')
- */
-export async function listThreads(userId: string = 'main-user') {
-  return await globalMemory.getConversations(userId);
-}
-
-/**
- * Utility: Get conversation history for a thread
- * @param conversationId - Conversation/thread ID
- * @param limit - Maximum number of messages
- */
-export async function getThreadHistory(conversationId: string, limit: number = 50) {
-  return await globalMemory.getHistory(conversationId, limit);
-}
-
-
 
 // Export utilities for external use
 export {
   voltAgent,
   agentRegistry,
-  memoryStorage,
+  voltAgentMemory,
   listAgents,
   getSystemStatus,
   systemConfig,
 };
+
+// Re-export memory utilities
+export { getOrStartThread, listThreads, getThreadHistory } from "./memory/voltAgentMemory.js";
 
 // Development utilities
 export const development = {
@@ -293,7 +266,7 @@ export const development = {
    * Get conversation memory stats (list all conversations for main-user)
    */
   async getMemoryStats() {
-    return await memoryStorage.getConversations('main-user');
+    return await voltAgentMemory.getConversations('main-user');
   },
 
   /**
@@ -310,44 +283,3 @@ export const development = {
     return systemConfig;
   },
 };
-
-/**
- * Adaptable example function to test supervisorAgent with custom prompts
- * @param prompt - Custom prompt to send to the agent
- * @param thinkingBudget - Thinking budget for the request (default: 1024)
- */
-async function testSupervisorAgent(
-  prompt: string = "Analyze the current project structure and suggest improvements for better organization and maintainability.",
-  thinkingBudget: number = 1024
-) {
-  try {
-    console.log(`\n🤖 Testing Supervisor Agent with thinking budget: ${thinkingBudget}`);
-    console.log(`📝 Prompt: "${prompt}"`);
-    console.log("⏳ Generating response...\n");
-
-    const response = await supervisorAgent.generateText(prompt, {
-      provider: {
-        thinkingConfig: {
-          thinkingBudget,
-        },
-      },
-    });
-
-    console.log("✅ Agent Response:");
-    console.log("─".repeat(80));
-    console.log(response.text);
-    console.log("─".repeat(80));
-    
-    if (response.usage) {
-      console.log("\n📊 Usage Stats:");
-      console.log(`   Input tokens: ${response.usage.promptTokens || 'N/A'}`);
-      console.log(`   Output tokens: ${response.usage.completionTokens || 'N/A'}`);
-      console.log(`   Total tokens: ${response.usage.totalTokens || 'N/A'}`);
-    }
-    
-    return response;
-  } catch (error) {
-    console.error("❌ Error generating text:", error);
-    throw error;
-  }
-}

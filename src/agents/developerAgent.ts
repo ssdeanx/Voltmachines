@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { githubTool, gitTool, urlFetchTool, webSearchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 import type { OnEndHookArgs } from '@voltagent/core';
 /**
  * Developer agent configuration schema
@@ -54,7 +54,7 @@ export const agentConfig = developerConfigSchema.parse({
   maxCommitHistory: 200,
 });
 
-export const developerAgent = patchAgentMethods(new Agent({
+export const developerAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a specialized developer agent with expertise in:
   
@@ -99,15 +99,14 @@ export const developerAgent = patchAgentMethods(new Agent({
   - Include security considerations for repository access
   - Suggest best practices for version control workflows
   - Validate URLs and repository paths before operations
-  - Handle errors gracefully and provide actionable feedback
-  - Suggest alternative approaches when appropriate
+  - Handle errors gracefully and provide actionable feedback  - Suggest alternative approaches when appropriate
   - Include relevant links and documentation references
   - All development task results must conform to developmentTaskSchema`,
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -116,7 +115,7 @@ export const developerAgent = patchAgentMethods(new Agent({
     },
   },
   tools: [githubTool, gitTool, urlFetchTool, webSearchTool],
-}));
+});
 
 export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
   return developerAgent.generateText(prompt, options);

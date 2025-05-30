@@ -2,10 +2,9 @@ import { z } from "zod";
 import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool } from "../tools/index.js";
-import { developmentHooks } from "./agentHooks.js";
-import { globalMemory } from "../memory/index.js";
+import { developmentHooks } from "./voltAgentHooks.js";
+import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 import type { OnEndHookArgs } from '@voltagent/core';
-import  generateText  from '@voltagent/core';
 /**
  * Content creation configuration schema
  */
@@ -42,7 +41,7 @@ const agentConfig = contentCreationConfigSchema.parse({
   audience: 'general',
 });
 
-export const contentCreationAgent = patchAgentMethods(new Agent({
+export const contentCreationAgent = new Agent({
   name: agentConfig.name,
   instructions: `You are a specialized content creation agent with expertise in:
   - Creative writing and copywriting (max ${agentConfig.maxContentLength} characters)
@@ -61,7 +60,7 @@ export const contentCreationAgent = patchAgentMethods(new Agent({
   }),
   model: "models/gemini-2.0-flash-exp",
   tools: [textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
-  memory: globalMemory,
+  memory: voltAgentMemory,
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -69,8 +68,7 @@ export const contentCreationAgent = patchAgentMethods(new Agent({
       console.log(`[✅ Agent] contentCreationAgent completed operation for conversation:`, conversationId || 'unknown');
     },
   },
-}));
-
+});
 // Usage:
 // const conversationId = await getOrStartThread('contentCreator', 'main-user');
 // const response = await contentCreationAgent.generateText('Create content...', { userId: 'main-user', conversationId });
