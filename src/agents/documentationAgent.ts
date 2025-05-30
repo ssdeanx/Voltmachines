@@ -45,6 +45,26 @@ Always ensure documentation is accurate, well-structured, and properly cited.`,
   hooks: developmentHooks,
   tools: [textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
 });
-export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
-  return documentationAgent.generateText(prompt, options);
+
+/**
+ * Generates text using the documentationAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await documentationAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[documentationAgent.generateText] Error:", error);
+    throw error;
+  }
 };

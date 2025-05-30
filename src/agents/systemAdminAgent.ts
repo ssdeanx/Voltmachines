@@ -4,6 +4,7 @@ import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { systemInfoTool, webSearchTool } from "../tools/index.js";
 import { developmentHooks } from "./voltAgentHooks.js";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
+import { getAgentPrompt } from "./agentPrompt.js";
 
 import type { OnEndHookArgs } from '@voltagent/core';
 
@@ -11,6 +12,16 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * System admin configuration schema
  */
 const systemAdminConfigSchema = z.object({
+  capabilities: z.array(z.string()).default([
+    "system monitoring",
+    "performance analysis", 
+    "environment configuration",
+    "troubleshooting",
+    "process management",
+    "security diagnostics",
+    "web research",
+    "compliance checking"
+  ]),
   monitoringInterval: z.number().positive().default(300), // 5 minutes
   alertThresholds: z.object({
     cpu: z.number().min(0).max(100).default(80),
@@ -64,6 +75,16 @@ export type SystemAdminConfig = z.infer<typeof systemAdminConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = systemAdminConfigSchema.parse({
+  capabilities: [
+    "system monitoring",
+    "performance analysis", 
+    "environment configuration",
+    "troubleshooting",
+    "process management",
+    "security diagnostics",
+    "web research",
+    "compliance checking"
+  ],
   monitoringInterval: 180, // 3 minutes
   alertThresholds: {
     cpu: 75,
@@ -77,55 +98,46 @@ const agentConfig = systemAdminConfigSchema.parse({
 
 export const systemAdminAgent = new Agent({
   name: "system-admin",
-  instructions: `You are a specialized system administration agent with expertise in:
-  
-  **Configuration:**
-  - Monitoring interval: ${agentConfig.monitoringInterval} seconds
-  - Alert thresholds: CPU ${agentConfig.alertThresholds.cpu}%, Memory ${agentConfig.alertThresholds.memory}%, Disk ${agentConfig.alertThresholds.disk}%
-  - Security scans: ${agentConfig.enableSecurityScans ? 'enabled' : 'disabled'}
-  - Log retention: ${agentConfig.logRetentionDays} days
-  - Supported OS: ${agentConfig.supportedOs.join(', ')}
-  
-  **Core Capabilities:**
-  - System monitoring and performance analysis
-  - Environment configuration and troubleshooting
-  - Process management and optimization
-  - Security best practices and diagnostics
-  - Research for troubleshooting and best practices
-  
-  **Monitoring & Analysis:**
-  - Real-time system health assessment
-  - Performance bottleneck identification
-  - Resource utilization optimization
-  - Predictive maintenance recommendations
-  
-  **Security & Compliance:**
-  - Security vulnerability assessment
-  - Configuration hardening recommendations
-  - Access control and permission analysis
-  - Compliance with security standards
-  
-  **Best Practices:**
-  - Always prioritize system stability and security in your recommendations
-  - Provide step-by-step troubleshooting guides when issues are identified
-  - Use web search for current security advisories and best practices
-  - Document all system changes and configurations
-  - Monitor system health against configured thresholds
-    All system health reports must conform to systemHealthSchema for consistent monitoring.`,
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
+    goal: "Monitor system health, troubleshoot issues, and maintain optimal performance.",
+    context: `Configuration - Monitoring: ${agentConfig.monitoringInterval}s intervals, Alert thresholds: CPU ${agentConfig.alertThresholds.cpu}%, Memory ${agentConfig.alertThresholds.memory}%, Disk ${agentConfig.alertThresholds.disk}%. Security scans: ${agentConfig.enableSecurityScans ? 'enabled' : 'disabled'}. Supported OS: ${agentConfig.supportedOs.join(', ')}.`,
+    task: "Analyze system metrics, provide recommendations, and assist with system administration tasks.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: voltAgentMemory,
-  hooks: {
+  memory: voltAgentMemory,  hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
       const conversationId = args.context?.userContext?.get('conversationId') || undefined;
-      console.log(`[✅ Agent] systemAdminAgent completed operation for conversation:`, conversationId || 'unknown');
+      console.log(`[✅ Agent] system-admin completed operation for conversation:`, conversationId || 'unknown');
     },
   },
   tools: [systemInfoTool, webSearchTool]
 });
-export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
-  return systemAdminAgent.generateText(prompt, options);
+
+/**
+ * Generates text using the systemAdminAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await systemAdminAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[systemAdminAgent.generateText] Error:", error);
+    throw error;
+  }
+
 };

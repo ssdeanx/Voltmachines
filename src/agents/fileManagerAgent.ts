@@ -152,9 +152,29 @@ All file operations must conform to fileOperationSchema and repository analysis 
   tools: [gitTool, githubTool, urlFetchTool],
 });
 
-export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
-  return fileManagerAgent.generateText(prompt, options);
-}
+/**
+ * Generates text using the fileManagerAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await fileManagerAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[fileManagerAgent.generateText] Error:", error);
+    throw error;
+  }
+};
+
 
 // Add the agent as a subagent to the supervisor
 // This also registers the relationship in AgentRegistry

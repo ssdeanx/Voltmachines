@@ -43,6 +43,26 @@ Always cite your sources and validate your findings.`,
   tools: [webSearchTool, urlFetchTool, textAnalyzerTool, dataFormatterTool],
 });
 
-export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
-  return researchAgent.generateText(prompt, options);
+/**
+ * Generates text using the researchAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await researchAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[researchAgent.generateText] Error:", error);
+    throw error;
+  }
 };
+ 

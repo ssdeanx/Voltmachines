@@ -117,6 +117,25 @@ export const developerAgent = new Agent({
   tools: [githubTool, gitTool, urlFetchTool, webSearchTool],
 });
 
-export const generateText = async (prompt: string, options?: Record<string, unknown>) => {
-  return developerAgent.generateText(prompt, options);
+/**
+ * Generates text using the developerAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await developerAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[developerAgent.generateText] Error:", error);
+    throw error;
+  }
 };

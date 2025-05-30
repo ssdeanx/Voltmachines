@@ -69,6 +69,26 @@ export const contentCreationAgent = new Agent({
     },
   },
 });
-// Usage:
-// const conversationId = await getOrStartThread('contentCreator', 'main-user');
-// const response = await contentCreationAgent.generateText('Create content...', { userId: 'main-user', conversationId });
+
+/**
+ * Generates text using the contentCreationAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await contentCreationAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[contentCreationAgent.generateText] Error:", error);
+    throw error;
+  }
+};

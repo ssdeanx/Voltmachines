@@ -80,7 +80,28 @@ export const dataAnalysisAgent = new Agent({
   },
 });
 
-
+/**
+ * Generates text using the dataAnalysisAgent's LLM.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated text.
+ * @throws If text generation fails.
+ */
+// Generated on 2025-05-30 17:34 UTC
+export const generateText = async (
+  prompt: string,
+  options?: Record<string, unknown>
+): Promise<string> => {
+  try {
+    const result = await dataAnalysisAgent.generateText(prompt, options);
+    return result.text;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[dataAnalysisAgent.generateText] Error:", error);
+    throw error;
+  }
+};
 // Usage:
 // const conversationId = await getOrStartThread('dataAnalyst', 'main-user');
 // const response = await dataAnalysisAgent.generateText('Analyze this data', { userId: 'main-user', conversationId });
