@@ -39,8 +39,8 @@ import { voltAgentMemory } from "./memory/voltAgentMemory.js";
  * 
  * const config = voltAgentConfigSchema.parse({
  *   databaseUrl: "file:./.voltagent/memory.db",
- *   tablePrefix: "voltagent_memory",
- *   storageLimit: 100,
+ *   tablePrefix: "voltage",
+ *   storageLimit: 5000,
  *   debug: true
  * });
  * 
@@ -51,9 +51,9 @@ const voltAgentConfigSchema = z.object({
   /** Optional authentication token for database access */
   authToken: z.string().optional(),
   /** Prefix for database table names to avoid conflicts */
-  tablePrefix: z.string().default("voltagent_memory"),
+  tablePrefix: z.string().default("voltage"),
   /** Maximum storage limit in MB for conversation memory */
-  storageLimit: z.number().positive().default(100),
+  storageLimit: z.number().positive().default(5000),
   /** Enable debug logging and development features */
   debug: z.boolean().default(true),
   /** Telemetry configuration for observability and monitoring */
@@ -158,8 +158,8 @@ export type VoltAgentConfig = z.infer<typeof voltAgentConfigSchema>;
 const systemConfig = voltAgentConfigSchema.parse({
   databaseUrl: process.env.DATABASE_URL || "file:./.voltagent/memory.db",
   authToken: process.env.DATABASE_AUTH_TOKEN,
-  tablePrefix: "voltagent_memory",
-  storageLimit: 100,
+  tablePrefix: "voltage",
+  storageLimit: 5000,
   debug: true,
   telemetry: {
     publicKey: process.env.PRIVATE_KEY || '',
@@ -249,6 +249,25 @@ export const supervisorAgent = new Agent({
   model: "gemini-2.5-flash-preview-05-20",
   tools: [...mcpTools, delegateTaskTool],
   memory: voltAgentMemory,
+  memoryOptions: {
+    maxSubAgents: supervisorConfig.maxSubAgents,
+    delegationTimeout: supervisorConfig.delegationTimeout,
+    enableFileSystem: supervisorConfig.enableFileSystem,
+    enableMemoryManagement: supervisorConfig.enableMemoryManagement,
+     // Enable context sharing for task delegation
+    enableContextSharing: true,
+    // Enable additional features for data processing
+    enableDataProcessing: true,
+    // Additional memory options
+    maxSteps: 100, // Limit steps to prevent excessive memory usage
+    // Enable additional features for agent coordination
+    enableAgentCoordination: true,
+    // Enable additional features for file system operations
+    maxContextLength: 1000000,
+    thinkingTokens: 1024,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
   subAgents: Object.values(agentRegistry),
   hooks: {
     ...developmentHooks,

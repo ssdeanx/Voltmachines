@@ -5,11 +5,44 @@ All notable changes to the VoltAgent multi-agent system project are documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.12] - 2025-05-30
+
+### 🚀 **Unified Agent Prompt & Capabilities Pattern**
+
+#### **Added**
+
+- **Dynamic Agent Prompts:** All agents (including supervisor) now use a unified `getAgentPrompt` helper for dynamic, capability-driven, and type-safe prompt generation.
+- **Capabilities in Config:** Each agent's Zod config schema now includes a `capabilities` array, ensuring accurate, self-documenting instructions and easy UI integration.
+- **Name Separation:** Agent `name` is always a separate property in the Agent constructor, never in the config schema.
+
+#### **Improvements**
+
+- **Memory Options:** Supervisor and all sub-agents now leverage advanced `memoryOptions` (context sharing, data processing, agent coordination, etc.) for robust multi-agent workflows.
+- **Consistency:** All agent files are DRY, maintainable, and follow the same pattern for config, prompt, and tool integration.
+- **Type Safety:** All prompt fields and config values are type-safe and validated at runtime.
+- **Documentation:** Updated code comments and technical documentation to reflect the new agent pattern and memory architecture.
+
+#### **Verification**
+
+- **System Supercharged:** All agents and the supervisor are now fully standardized, maintainable, and ready for advanced orchestration and delegation.
+- **No Build Errors:** Full TypeScript build passes successfully with the new pattern.
+
+### Developer Notes
+
+- When adding new agents, always:
+  - Define and export a Zod config schema with a `capabilities` array.
+  - Use the `getAgentPrompt` helper for instructions.
+  - Register the agent in the barrel file and agent registry.
+- The new pattern enables rapid UI prototyping, validation, and future-proof extensibility.
+
+---
+
 ## [0.0.11] - 2025-05-29
 
 ### ✅ **MILESTONE: Complete System Integration**
 
 #### **Fixed**
+
 - **Memory Interface Compatibility**: Resolved all VoltAgent Memory interface compatibility issues
   - Added missing `addTimelineEvent` method to ConversationMemory class
   - Implemented all required VoltAgent Memory interface methods
@@ -17,20 +50,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensured proper memory assignment in supervisor agent configuration
 
 #### **Resolved**
+
 - **Agent Error Resolution**: Fixed all compilation errors across the agent ecosystem
   - Cleaned up unused imports in `developerAgent.ts`, `fileManagerAgent.ts`, `systemAdminAgent.ts`
   - Removed unused `systemInfoTool` import from `dataAnalysisAgent.ts`
   - Fixed export conflicts in `agents/index.ts` by switching from wildcard exports to specific exports
   - Resolved `generateText` function naming conflicts across multiple agents
 
-#### **Improved**
+#### **Improvements**
+
 - **Code Quality**: Enhanced TypeScript compliance and maintainability
   - Removed unused parameters from agent hooks
   - Standardized import patterns across all agent files
   - Implemented proper error handling and logging patterns
   - Achieved full TypeScript build success without errors
 
-#### **Verified**
+#### **Verification**
+
 - **System Validation**: Complete end-to-end system verification
   - ✅ All agents error-free and properly wired
   - ✅ Memory system fully compatible with VoltAgent framework

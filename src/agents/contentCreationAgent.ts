@@ -4,11 +4,19 @@ import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool } from "../tools/index.js";
 import { developmentHooks } from "./voltAgentHooks.js";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
-import type { OnEndHookArgs } from '@voltagent/core';
+import { getAgentPrompt } from "./agentPrompt.js";
 /**
  * Content creation configuration schema
  */
 const contentCreationConfigSchema = z.object({
+  capabilities: z.array(z.string()).default([
+    "content writing",
+    "SEO optimization",
+    "markdown and HTML formatting",
+    "summarization",
+    "creative generation",
+    "web research"
+  ]),
   maxContentLength: z.number().positive().default(5000),
   supportedFormats: z.array(z.enum(['markdown', 'html', 'text', 'json'])).default(['markdown', 'text']),
   seoOptimization: z.boolean().default(true),
@@ -33,39 +41,48 @@ export type ContentCreationConfig = z.infer<typeof contentCreationConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = contentCreationConfigSchema.parse({
-  maxContentLength: 10000,
-  supportedFormats: ['markdown', 'html', 'text'],
+  capabilities: [
+    "content writing",
+    "SEO optimization",
+    "markdown and HTML formatting",
+    "summarization",
+    "creative generation",
+    "web research"
+  ],
+  maxContentLength: 2000,
   seoOptimization: true,
-  audience: 'general',
+  supportedFormats: ["markdown", "html", "text", "json"],
+  audience: "general",
 });
 
 export const contentCreationAgent = new Agent({
   name: "content-creator",
-  instructions: `You are a specialized content creation agent with expertise in:
-  - Creative writing and copywriting (max ${agentConfig.maxContentLength} characters)
-  - Content optimization and SEO (${agentConfig.seoOptimization ? 'enabled' : 'disabled'})
-  - Editorial review and proofreading
-  - Content strategy and planning for ${agentConfig.audience} audience
-  - Research and fact-checking via web search
-  - Current trends and topic analysis
-  - Supported formats: ${agentConfig.supportedFormats.join(', ')}
-  
-  Focus on creating engaging, well-structured content that resonates with the target audience.
-  Use text analysis to optimize readability and impact. Research current trends and verify facts.
-    Always validate your content output using the contentOutputSchema before final delivery.`,
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
+    goal: "Generate high-quality content, optimize for SEO, and support multiple formats.",
+    context: `Max content length: ${agentConfig.maxContentLength}, SEO: ${agentConfig.seoOptimization ? 'enabled' : 'disabled'}, Supported formats: ${agentConfig.supportedFormats.join(', ')}`,
+    task: "Write, summarize, and format content as requested.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  tools: [textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
   memory: voltAgentMemory,
-  hooks: {
-    ...developmentHooks,
-    onEnd: async (args: OnEndHookArgs) => {
-      const conversationId = args.context?.userContext?.get('conversationId') || undefined;
-      console.log(`[✅ Agent] contentCreationAgent completed operation for conversation:`, conversationId || 'unknown');
-    },
+  memoryOptions: {
+    maxContextLength: agentConfig.maxContentLength,
+    audience: agentConfig.audience,
+    supportedFormats: agentConfig.supportedFormats,
+    seoOptimization: agentConfig.seoOptimization,
+   // Additional memory options
+    maxSteps: 100, // Limit steps to prevent excessive memory usage
+    // Enable additional features for data analysis
+    enableContextSharing: true,
+    enableDataProcessing: true,
+    storageLimit: 5000,
+    storageType: "voltage",
   },
+  hooks: developmentHooks,
+  tools: [textAnalyzerTool, dataFormatterTool, webSearchTool, urlFetchTool],
 });
 
 /**

@@ -1,22 +1,24 @@
 import { BaseRetriever, type BaseMessage } from "@voltagent/core";
 import { vectorMemory } from './vectorMemory.js';
-import { globalMemory } from './index.js';
+import { enhancedVoltMemory } from './voltAgentMemory.js';
+import { agentRegistry } from '../agents/index.js';
 
 /**
  * Supervisor-specific retriever that searches both vector memory and conversation history
- * for relevant multi-agent, delegation, and workflow context.
+ * for relevant multi-agent, delegation, and workflow context, including sub-agent context aggregation.
  */
 export class SupervisorRetriever extends BaseRetriever {
   constructor(options?: { toolName?: string; toolDescription?: string }) {
     super({
       toolName: options?.toolName || "search_supervisor_context",
       toolDescription: options?.toolDescription ||
-        "Searches conversation history and vector memory for relevant multi-agent, delegation, and workflow context. Use when you need to reference previous delegation decisions, agent outcomes, or workflow discussions.",
+        "Searches conversation history, vector memory, and all sub-agent threads for relevant multi-agent, delegation, and workflow context. Use when you need to reference previous delegation decisions, agent outcomes, workflow discussions, or sub-agent results.",
     });
   }
 
   /**
-   * Retrieve relevant supervisor context from both vector and conversation memory, using a thread (conversationId) if provided
+   * Retrieve relevant supervisor context from both vector and conversation memory, using a thread (conversationId) if provided.
+   * Also aggregates context from all sub-agents for orchestration.
    */
   async retrieve(input: string | BaseMessage[], conversationId?: string): Promise<string> {
     try {
@@ -39,19 +41,36 @@ export class SupervisorRetriever extends BaseRetriever {
       } else {
         return "No search query provided.";
       }
-
       if (!query || query.trim().length === 0) {
         return "No valid search query provided.";
       }
-
-      console.log(`SupervisorRetriever: Searching for supervisor context related to "${query}"`);
-
       // Search vector memory for semantically similar content
       const vectorResults = await vectorMemory.search(query, 5);
-      // Get recent conversation history for additional context (thread-aware)
-      const recentContext = conversationId
-        ? await globalMemory.getRecentContext(conversationId, 10)
-        : await globalMemory.getRecentContext('main-user', 10);
+      // Supervisor's own recent context
+      let recentContext = "";
+      if (conversationId) {
+        const result = await enhancedVoltMemory.getMessagesWithContext(conversationId, { limit: 10 });
+        if (result && result.messages && result.messages.length > 0) {
+          recentContext = result.messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+        }
+      }
+      // Aggregate context from all sub-agents (by agentRegistry)
+      let subAgentContexts = "";
+      for (const agentKey of Object.keys(agentRegistry)) {
+        // Get all conversations for this agent (limit to 1 most recent for brevity)
+        const threads = await enhancedVoltMemory.getConversations(agentKey);
+        if (threads && threads.length > 0) {
+          const thread = threads[0];
+          if (thread && thread.id) {
+            const subResult = await enhancedVoltMemory.getMessagesWithContext(thread.id, { limit: 5 });
+            if (subResult && subResult.messages && subResult.messages.length > 0) {
+              subAgentContexts += `### Sub-Agent: ${agentKey}\n`;
+              subAgentContexts += subResult.messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+              subAgentContexts += '\n';
+            }
+          }
+        }
+      }
       // Format the retrieved information
       let contextString = "";
       if (vectorResults.length > 0) {
@@ -66,8 +85,12 @@ export class SupervisorRetriever extends BaseRetriever {
         contextString += "## Recent Supervisor Conversation Context:\n\n";
         contextString += recentContext + "\n\n";
       }
+      if (subAgentContexts) {
+        contextString += "## Sub-Agent Contexts (for orchestration):\n\n";
+        contextString += subAgentContexts + "\n";
+      }
       if (contextString === "") {
-        return "No relevant supervisor context found in conversation history or vector memory.";
+        return "No relevant supervisor or sub-agent context found in conversation history or vector memory.";
       }
       return contextString;
     } catch (error) {

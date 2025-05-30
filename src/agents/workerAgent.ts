@@ -3,27 +3,27 @@ import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { developmentHooks } from "./voltAgentHooks.js";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
-import { agentPrompt } from "./agentPrompt.js";
+import { getAgentPrompt } from "./agentPrompt.js";
 
 /**
  * Worker agent configuration schema
  */
 const workerAgentConfigSchema = z.object({
-  maxTasks: z.number().positive().default(10),
   capabilities: z.array(z.string()).default(["task execution", "data processing", "context sharing"]),
+  maxTasks: z.number().positive().default(10),
 });
 
 export type WorkerAgentConfig = z.infer<typeof workerAgentConfigSchema>;
 
 const agentConfig = workerAgentConfigSchema.parse({
-  maxTasks: 10,
   capabilities: ["task execution", "data processing", "context sharing"],
+  maxTasks: 10,
 });
 
 export const workerAgent = new Agent({
   name: "worker-agent",
-  instructions: agentPrompt({
-    capabilities: agentConfig.capabilities.join(", "),
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
     goal: "Assist the supervisor agent and sub-agents with delegated tasks.",
     context: "You may receive a sessionId and other context from the supervisor.",
     task: "Perform the assigned work and report results.",
@@ -33,6 +33,19 @@ export const workerAgent = new Agent({
   }),
   model: "models/gemini-2.0-flash-exp",
   memory: voltAgentMemory,
+  memoryOptions: {
+    maxTasks: agentConfig.maxTasks,
+    // Enable context sharing for task delegation
+    enableContextSharing: true,
+    // Enable additional features for data processing
+    enableDataProcessing: true,
+    // Additional memory options
+    maxSteps: 100, // Limit steps to prevent excessive memory usage
+    // Additional memory options
+    maxContextLength: 1000000,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
   hooks: developmentHooks,
   tools: [], // Add tools as needed
 });

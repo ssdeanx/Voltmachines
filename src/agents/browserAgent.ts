@@ -87,54 +87,38 @@ const agentConfig = browserAgentConfigSchema.parse({
 });
 
 export const browserAgent = new Agent({
-  name: "browser-automation",
-  instructions: `You are an advanced browser automation agent capable of:
-
-**Configuration:**
-- Max steps per session: ${agentConfig.maxSteps}
-- Screenshots enabled: ${agentConfig.allowScreenshots ? 'yes' : 'no'}
-- Headless mode: ${agentConfig.headless ? 'yes' : 'no'}
-- Navigation timeout: ${agentConfig.navigationTimeout}ms
-- Interaction timeout: ${agentConfig.interactionTimeout}ms
-- Max concurrent tabs: ${agentConfig.maxConcurrentTabs}
-- Network capture: ${agentConfig.enableNetworkCapture ? 'enabled' : 'disabled'}
-- PDF export: ${agentConfig.enablePdfExport ? 'enabled' : 'disabled'}
-- File downloads: ${agentConfig.enableFileDownload ? 'enabled' : 'disabled'}
-- JavaScript execution: ${agentConfig.enableJavascript ? 'enabled' : 'disabled'}
-${agentConfig.defaultViewport ? `- Default viewport: ${agentConfig.defaultViewport.width}x${agentConfig.defaultViewport.height}` : ''}
-
-**Core Capabilities:**
-- Web page navigation and interaction
-- Form filling and submission
-- Element clicking, typing, and selection
-- Screenshot capture and visual analysis
-- PDF generation and export
-- Data extraction from web pages
-- File downloads and saves
-- Multi-tab browsing coordination
-- Network request monitoring (when enabled)
-
-**Available Tools:**
-- Navigation: navigate_to, go_back, go_forward, refresh_page
-- Interaction: click_element, type_text, select_option
-- Information: get_text, get_visible_text, get_visible_html
-- Screenshot: take_screenshot
-- Export: export_pdf, save_to_file
-- Data: extract_data, list_interactive_elements
-- Management: close_browser, get_user_agent
-
-**Best Practices:**
-1. Always take screenshots to verify page state before interactions
-2. Use get_visible_text or get_visible_html to understand page content
-3. Be patient with page loads and network requests
-4. Use descriptive selectors for reliable element targeting
-5. Validate successful actions with appropriate assertions
-Remember to be methodical and verify each step of your automation process.`,
+  name: "BrowserAgent",
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
+    goal: "Automate browser tasks and assist with web interactions.",
+    context: `Configuration - Max steps: ${agentConfig.maxSteps}, Screenshots: ${agentConfig.allowScreenshots ? 'enabled' : 'disabled'}, Headless: ${agentConfig.headless ? 'yes' : 'no'}, Navigation timeout: ${agentConfig.navigationTimeout}ms, Max tabs: ${agentConfig.maxConcurrentTabs}`,
+    task: "Perform browser automation and report results.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
   memory: voltAgentMemory,
+  memoryOptions: {
+    maxSteps: agentConfig.maxSteps,
+    allowScreenshots: agentConfig.allowScreenshots,
+    headless: agentConfig.headless,
+    navigationTimeout: agentConfig.navigationTimeout,
+    interactionTimeout: agentConfig.interactionTimeout,
+    maxConcurrentTabs: agentConfig.maxConcurrentTabs,
+    enableNetworkCapture: agentConfig.enableNetworkCapture,
+    enablePdfExport: agentConfig.enablePdfExport,
+    enableFileDownload: agentConfig.enableFileDownload,
+    enableJavascript: agentConfig.enableJavascript,
+    defaultViewport: agentConfig.defaultViewport,
+    // Additional memory options
+    // Enable additional features for data analysis
+    enableContextSharing: true,
+    enableDataProcessing: true,
+    maxContextLength: 1000000,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
@@ -163,8 +147,7 @@ Remember to be methodical and verify each step of your automation process.`,
     listInteractiveElementsTool,
     getUserAgentTool
   ]
-});
-/**
+});/**
  * Generates text using the browserAgent's LLM.
  *
  * @param prompt - The prompt string to send to the agent.

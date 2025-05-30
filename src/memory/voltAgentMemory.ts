@@ -12,7 +12,7 @@
  * - Automatic message embedding and indexing
  * 
  * @author VoltMachines Team
- * @version 0.0.8
+ * @version 0.0.12
  * @since 2025-05-30
  */
 
@@ -31,9 +31,9 @@ const memoryConfig = {
   /** Authentication token for database access (required for Turso/remote databases) */
   authToken: process.env.DATABASE_AUTH_TOKEN,
   /** Table prefix to avoid naming conflicts in shared databases */
-  tablePrefix: "voltagent_memory",
+  tablePrefix: "voltage",
   /** Maximum number of messages to store per conversation */
-  storageLimit: 100,
+  storageLimit: 5000,
   /** Enable debug logging for memory operations */
   debug: true,
 };

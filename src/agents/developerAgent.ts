@@ -5,12 +5,22 @@ import { githubTool, gitTool, urlFetchTool, webSearchTool } from "../tools/index
 import { developmentHooks } from "./voltAgentHooks.js";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 import type { OnEndHookArgs } from '@voltagent/core';
+import { getAgentPrompt } from "./agentPrompt.js";
+
 /**
  * Developer agent configuration schema
  */
-const developerConfigSchema = z.object({
+const developerAgentConfigSchema = z.object({
+  capabilities: z.array(z.string()).default([
+    "code analysis",
+    "repository management",
+    "pull request review",
+    "dependency tracking",
+    "documentation analysis",
+    "web research"
+  ]),
   maxRepoSize: z.number().positive().default(1000000), // 1MB default
-  supportedLanguages: z.array(z.string()).default(['typescript', 'javascript', 'python', 'go', 'rust']),
+  supportedLanguages: z.array(z.string()).default(["js", "ts", "py", "go", "java", "rs"]),
   codeQualityThreshold: z.number().min(0).max(10).default(7),
   enableSecurity: z.boolean().default(true),
   maxCommitHistory: z.number().positive().default(100),
@@ -41,12 +51,20 @@ export const developmentTaskSchema = z.object({
 });
 
 export type DevelopmentTask = z.infer<typeof developmentTaskSchema>;
-export type DeveloperConfig = z.infer<typeof developerConfigSchema>;
+export type DeveloperConfig = z.infer<typeof developerAgentConfigSchema>;
 
 // Validate agent configuration
-export const agentConfig = developerConfigSchema.parse({
-  maxRepoSize: 5000000, // 5MB
-  supportedLanguages: ['typescript', 'javascript', 'python', 'go', 'rust', 'java', 'c#'],
+export const agentConfig = developerAgentConfigSchema.parse({
+  capabilities: [
+    "code analysis",
+    "repository management",
+    "pull request review",
+    "dependency tracking",
+    "documentation analysis",
+    "web research"
+  ],
+  maxRepoSize: 2000000, // 2MB
+  supportedLanguages: ["js", "ts", "py", "go", "java", "rs"],
   codeQualityThreshold: 8,
   enableSecurity: true,
   maxCommitHistory: 200,
@@ -54,57 +72,34 @@ export const agentConfig = developerConfigSchema.parse({
 
 export const developerAgent = new Agent({
   name: "developer",
-  instructions: `You are a specialized developer agent with expertise in:
-  
-  **Configuration:**
-  - Max repository size: ${agentConfig.maxRepoSize} bytes
-  - Supported languages: ${agentConfig.supportedLanguages.join(', ')}
-  - Code quality threshold: ${agentConfig.codeQualityThreshold}/10
-  - Security scanning: ${agentConfig.enableSecurity ? 'enabled' : 'disabled'}
-  - Max commit history: ${agentConfig.maxCommitHistory} commits
-  
-  **GitHub Operations:**
-  - Repository analysis and exploration
-  - Code search across repositories
-  - Issue and PR management
-  - Release tracking and analysis
-  - Repository statistics and insights
-  
-  **Git Operations:**
-  - Local repository management (clone, status, log, diff)
-  - Branch operations and version control
-  - Commit history analysis
-  - File system operations within repositories
-  
-  **Code Analysis:**
-  - Code quality assessment
-  - Documentation analysis
-  - Dependency tracking
-  - Architecture review
-  
-  **Research & Context:**
-  - Web research for technical solutions
-  - Documentation fetching and analysis
-  - Technology trend analysis
-  
-  **Memory & Context:**
-  - You have access to previous conversations and code discussions via the search_code_context tool
-  - Use this to reference past solutions, code examples, and technical discussions
-  - Always check for relevant context before providing solutions
-  
-  **Best Practices:**
-  - Always provide detailed explanations of git/GitHub operations
-  - Include security considerations for repository access
-  - Suggest best practices for version control workflows
-  - Validate URLs and repository paths before operations
-  - Handle errors gracefully and provide actionable feedback  - Suggest alternative approaches when appropriate
-  - Include relevant links and documentation references
-  - All development task results must conform to developmentTaskSchema`,
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
+    goal: "Analyze code, manage repositories, and support development workflows.",
+    context: `Max repo size: ${agentConfig.maxRepoSize}, Supported languages: ${agentConfig.supportedLanguages.join(', ')}, Code quality threshold: ${agentConfig.codeQualityThreshold}/10, Security: ${agentConfig.enableSecurity ? 'enabled' : 'disabled'}`,
+    task: "Perform code analysis, manage repositories, and assist with development tasks.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
   memory: voltAgentMemory,
+  memoryOptions: {
+    maxRepoSize: agentConfig.maxRepoSize,
+    supportedLanguages: agentConfig.supportedLanguages,
+    codeQualityThreshold: agentConfig.codeQualityThreshold,
+    enableSecurity: agentConfig.enableSecurity,
+    maxCommitHistory: agentConfig.maxCommitHistory,
+     // Enable context sharing for task delegation
+    enableContextSharing: true,
+    // Enable additional features for data processing
+    enableDataProcessing: true,
+    maxSteps: 100, // Limit steps to prevent excessive memory usage
+    // Enable additional features for development tasks
+    // Additional memory options
+    maxContextLength: 1000000,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
   hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {

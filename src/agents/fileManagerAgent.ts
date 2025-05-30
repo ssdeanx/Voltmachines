@@ -8,6 +8,7 @@ import {
 } from "../tools/index.js";
 import { developmentHooks } from "./voltAgentHooks.js";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
+import { getAgentPrompt } from "./agentPrompt.js";
 
 import type { OnEndHookArgs } from '@voltagent/core';
 
@@ -15,6 +16,14 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * File manager configuration schema
  */
 const fileManagerConfigSchema = z.object({
+  capabilities: z.array(z.string()).default([
+    "file system operations",
+    "git operations",
+    "repository analysis",
+    "project structure management",
+    "documentation processing",
+    "web research"
+  ]),
   maxFileSize: z.number().positive().default(10485760), // 10MB default
   allowedExtensions: z.array(z.string()).default(['.js', '.ts', '.json', '.md', '.txt', '.py', '.go']),
   gitBranchLimit: z.number().positive().default(50),
@@ -67,6 +76,14 @@ export type FileManagerConfig = z.infer<typeof fileManagerConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = fileManagerConfigSchema.parse({
+  capabilities: [
+    "file system operations",
+    "git operations",
+    "repository analysis",
+    "project structure management",
+    "documentation processing",
+    "web research"
+  ],
   maxFileSize: 52428800, // 50MB
   allowedExtensions: ['.js', '.ts', '.tsx', '.jsx', '.json', '.md', '.txt', '.py', '.go', '.rs', '.java'],
   gitBranchLimit: 100,
@@ -87,61 +104,34 @@ const agentConfig = fileManagerConfigSchema.parse({
  */
 export const fileManagerAgent = new Agent({
   name: "file-manager",
-  instructions: `You are a specialized file manager and version control agent with expertise in:
-
-**Configuration:**
-- Max file size: ${(agentConfig.maxFileSize / 1024 / 1024).toFixed(1)}MB
-- Allowed extensions: ${agentConfig.allowedExtensions.join(', ')}
-- Git branch limit: ${agentConfig.gitBranchLimit}
-- Auto backup: ${agentConfig.enableAutoBackup ? 'enabled' : 'disabled'}
-- Compression level: ${agentConfig.compressionLevel}/9
-
-**Git Operations:**
-- Repository initialization, cloning, and management
-- Commit history analysis and branch management
-- Merge conflict resolution and code review
-- Tag and release management
-- Remote repository synchronization
-
-**GitHub Integration:**
-- Repository creation, forking, and management
-- Issue tracking and project management
-- Pull request workflow and code review
-- Release management and deployment
-- GitHub Actions and CI/CD integration
-- Organization and team management
-
-**File System Management:**
-- Intelligent file organization and structure
-- Project scaffolding and template management
-- Code analysis and dependency tracking
-- Documentation generation and maintenance
-- Backup and recovery strategies
-
-**Best Practices:**
-- Always check repository status before making changes
-- Use descriptive commit messages following conventional commit format
-- Maintain clean git history with proper branching strategies
-- Ensure proper .gitignore and repository hygiene
-- Follow semantic versioning for releases
-- Document all significant changes and decisions
-
-**Workflow Guidelines:**
-1. Analyze current repository state before operations
-2. Suggest appropriate git workflows for the project
-3. Validate file operations against project structure
-4. Provide clear explanations of version control actions
-5. Offer rollback options for destructive operations
-6. Maintain security best practices for sensitive files
-
-Always explain your reasoning for file operations and git workflows. When working with repositories, prioritize data safety and provide clear documentation of changes.
-All file operations must conform to fileOperationSchema and repository analysis to repositoryAnalysisSchema.`,
+  instructions: getAgentPrompt({
+    capabilities: agentConfig.capabilities,
+    goal: "Manage files, repositories, and version control workflows.",
+    context: `Max file size: ${agentConfig.maxFileSize}, Allowed extensions: ${agentConfig.allowedExtensions.join(', ')}, Git branch limit: ${agentConfig.gitBranchLimit}`,
+    task: "Perform file operations, manage repositories, and assist with version control.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
-  model: "models/gemini-2.0-flash-exp",  memory: voltAgentMemory,
+  model: "models/gemini-2.0-flash-exp",  
+  memory: voltAgentMemory,
+  memoryOptions: {
+    maxFileSize: agentConfig.maxFileSize,
+    allowedExtensions: agentConfig.allowedExtensions,
+    gitBranchLimit: agentConfig.gitBranchLimit,
+    enableAutoBackup: agentConfig.enableAutoBackup,
+    compressionLevel: agentConfig.compressionLevel,
+     // Enable context sharing for task delegation
+    enableContextSharing: true,
+    // Enable additional features for data processing
+    enableDataProcessing: true,
+    maxContextLength: 1000000,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
   hooks: {
     ...developmentHooks,
+
     onEnd: async (args: OnEndHookArgs) => {
       const conversationId = args.context?.userContext?.get('conversationId') || undefined;
       console.log(`[✅ Agent] fileManagerAgent completed operation for conversation:`, conversationId || 'unknown');

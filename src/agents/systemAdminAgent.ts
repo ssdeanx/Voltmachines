@@ -108,7 +108,26 @@ export const systemAdminAgent = new Agent({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "models/gemini-2.0-flash-exp",
-  memory: voltAgentMemory,  hooks: {
+  memory: voltAgentMemory,
+  memoryOptions: {
+    monitoringInterval: agentConfig.monitoringInterval,
+    alertThresholds: agentConfig.alertThresholds,
+    enableSecurityScans: agentConfig.enableSecurityScans,
+    logRetentionDays: agentConfig.logRetentionDays,
+    supportedOs: agentConfig.supportedOs,
+     // Enable context sharing for task delegation
+    enableContextSharing: true,
+    // Enable additional features for data processing
+    enableDataProcessing: true,
+    // Additional memory options
+    maxSteps: 100, // Limit steps to prevent excessive memory usage
+    // Enable additional features for system administration tasks
+    // Additional memory options
+    maxContextLength: 1000000,
+    storageLimit: 5000,
+    storageType: "voltage",
+  },
+  hooks: {
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
       const conversationId = args.context?.userContext?.get('conversationId') || undefined;
