@@ -255,18 +255,35 @@ await globalMemory.addMessage(message, conversationId);
 ```
 
 ```mermaid
-%%{init: {'theme': 'default', 'themeVariables': {'primaryColor': '#4baaaa', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f0f0f0'}}}%%
-%%{config: {'flowchart': {'curve': 'linear'}}}%%
-%%{flowchart: {'nodeSpacing': 50, 'rankSpacing': 50, 'rankDirection': 'TB', 'wrap': true}}%%
-%%{flowchart: {'htmlLabels': true}}%%
-%%{flowchart: {'arrowMarkerAbsolute': true}}%%
-%%{flowchart: {'useMaxWidth': true}}%%
-%%{flowchart: {'defaultRenderer': 'dagre'}}%%
-%%{flowchart: {'node': {'shape': 'box', 'style': 'filled', 'fillColor': '#f9f9f9', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
-%%{flowchart: {'edge': {'style': 'solid', 'color': '#4baaaa', 'arrowhead': 'normal', 'arrowType': 'normal'}}}%%
-%%{flowchart: {'subgraph': {'style': 'rounded', 'fillColor': '#e0f7fa', 'strokeColor': '#4baaaa'}}}%%
-%%{flowchart: {'externalActor': {'shape': 'ellipse', 'style': 'filled', 'fillColor': '#ffebee', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
-%%{flowchart: {'externalSystem': {'shape': 'box', 'style': 'filled', 'fillColor': '#e3f2fd', 'fontSize': 14, 'fontFamily': 'Arial, sans-serif'}}}%%
+graph TD
+
+    UserActor["User<br>External Actor"]
+    subgraph ExternalSystems["External Systems"]
+        AIAPIs["AI APIs<br>Google GenAI, etc."]
+        WebServices["Web Services & Repositories<br>GitHub, Web Search, etc."]
+        BrowserEnv["Browser Environment<br>Playwright, etc."]
+        Database["Database Storage<br>LibSQL, etc."]
+    end
+    subgraph VoltAgentCore["VoltAgent Core<br>Node.js/TypeScript"]
+        AppLogic["Main Application Logic<br>TypeScript"]
+        AIAgents["AI Agents<br>TypeScript"]
+        AgentTools["Agent Tools & Capabilities<br>TypeScript"]
+        AgentMemory["Agent Memory & Context<br>TypeScript"]
+        
+        AppLogic -->|Orchestrates| AIAgents
+        AppLogic -->|Initializes| AgentTools
+        AppLogic -->|Manages| AgentMemory
+        AIAgents -->|Uses| AgentTools
+        AIAgents -->|Accesses/Stores in| AgentMemory
+    end
+
+    UserActor -->|Initiates tasks| AppLogic
+    AppLogic -->|Calls for generation| AIAPIs
+    AIAgents -->|Calls for generation| AIAPIs
+    AgentMemory -->|Uses for embeddings| AIAPIs
+    AgentMemory -->|Persists to/Retrieves from| Database
+    AgentTools -->|Interacts with| WebServices
+    AgentTools -->|Controls| BrowserEnv
 ```
 
 ```mermaid
