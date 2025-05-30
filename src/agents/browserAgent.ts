@@ -2,6 +2,7 @@ import { Agent } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { voltAgentMemory } from "../memory/voltAgentMemory.js";
 import { developmentHooks } from "./voltAgentHooks.js";
+import { getAgentPrompt } from "./agentPrompt.js";
 // Import all browser tools from the tools index
 import {
   navigationTool,
@@ -30,7 +31,17 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * Browser agent configuration schema (advanced)
  */
 export const browserAgentConfigSchema = z.object({
-  name: z.string().min(1),
+  capabilities: z.array(z.string()).default([
+    "web page navigation and interaction",
+    "form filling and submission", 
+    "element clicking, typing, and selection",
+    "screenshot capture and visual analysis",
+    "PDF generation and export",
+    "data extraction from web pages",
+    "file downloads and saves",
+    "multi-tab browsing coordination",
+    "network request monitoring"
+  ]),
   maxSteps: z.number().positive().default(20),
   allowScreenshots: z.boolean().default(true),
   allowedDomains: z.array(z.string()).optional(),
@@ -51,7 +62,17 @@ export type BrowserAgentConfig = z.infer<typeof browserAgentConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = browserAgentConfigSchema.parse({
-  name: "browser-automation",
+  capabilities: [
+    "web page navigation and interaction",
+    "form filling and submission", 
+    "element clicking, typing, and selection",
+    "screenshot capture and visual analysis",
+    "PDF generation and export",
+    "data extraction from web pages",
+    "file downloads and saves",
+    "multi-tab browsing coordination",
+    "network request monitoring"
+  ],
   maxSteps: 25,
   allowScreenshots: true,
   headless: process.env.NODE_ENV === 'production',
@@ -66,7 +87,7 @@ const agentConfig = browserAgentConfigSchema.parse({
 });
 
 export const browserAgent = new Agent({
-  name: agentConfig.name,
+  name: "browser-automation",
   instructions: `You are an advanced browser automation agent capable of:
 
 **Configuration:**
@@ -118,7 +139,7 @@ Remember to be methodical and verify each step of your automation process.`,
     ...developmentHooks,
     onEnd: async (args: OnEndHookArgs) => {
       const conversationId = args.context?.userContext?.get('conversationId') || undefined;
-      console.log(`[✅ Agent] ${agentConfig.name} completed operation for conversation:`, conversationId || 'unknown');
+      console.log(`[✅ Agent] browser-automation completed operation for conversation:`, conversationId || 'unknown');
     }
   },
   tools: [

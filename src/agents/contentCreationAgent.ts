@@ -9,7 +9,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * Content creation configuration schema
  */
 const contentCreationConfigSchema = z.object({
-  name: z.string().min(1),
   maxContentLength: z.number().positive().default(5000),
   supportedFormats: z.array(z.enum(['markdown', 'html', 'text', 'json'])).default(['markdown', 'text']),
   seoOptimization: z.boolean().default(true),
@@ -34,7 +33,6 @@ export type ContentCreationConfig = z.infer<typeof contentCreationConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = contentCreationConfigSchema.parse({
-  name: "content-creator",
   maxContentLength: 10000,
   supportedFormats: ['markdown', 'html', 'text'],
   seoOptimization: true,
@@ -42,7 +40,7 @@ const agentConfig = contentCreationConfigSchema.parse({
 });
 
 export const contentCreationAgent = new Agent({
-  name: agentConfig.name,
+  name: "content-creator",
   instructions: `You are a specialized content creation agent with expertise in:
   - Creative writing and copywriting (max ${agentConfig.maxContentLength} characters)
   - Content optimization and SEO (${agentConfig.seoOptimization ? 'enabled' : 'disabled'})

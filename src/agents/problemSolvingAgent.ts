@@ -11,7 +11,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * Problem solving configuration schema
  */
 const problemSolvingConfigSchema = z.object({
-  name: z.string().min(1),
   maxComplexity: z.number().min(1).max(10).default(8),
   timeoutMinutes: z.number().positive().default(30),
   enableMultistep: z.boolean().default(true),
@@ -47,7 +46,6 @@ export type ProblemSolvingConfig = z.infer<typeof problemSolvingConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = problemSolvingConfigSchema.parse({
-  name: "problem-solver",
   maxComplexity: 9,
   timeoutMinutes: 45,
   enableMultistep: true,
@@ -56,7 +54,7 @@ const agentConfig = problemSolvingConfigSchema.parse({
 });
 
 export const problemSolvingAgent = new Agent({
-  name: agentConfig.name,
+  name: "problem-solver",
   instructions: `You are a versatile problem-solving agent capable of:
   
   **Configuration:**

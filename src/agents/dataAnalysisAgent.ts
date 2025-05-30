@@ -10,7 +10,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * Data analysis configuration schema
  */
 const dataAnalysisConfigSchema = z.object({
-  name: z.string().min(1),
   maxDataPoints: z.number().positive().default(10000),
   supportedFormats: z.array(z.enum(['json', 'csv', 'xml', 'yaml'])).default(['json', 'csv']),
   confidenceThreshold: z.number().min(0).max(1).default(0.8),
@@ -44,7 +43,6 @@ export type DataAnalysisConfig = z.infer<typeof dataAnalysisConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = dataAnalysisConfigSchema.parse({
-  name: "data-analyst",
   maxDataPoints: 50000,
   supportedFormats: ['json', 'csv', 'xml'],
   confidenceThreshold: 0.85,
@@ -52,7 +50,7 @@ const agentConfig = dataAnalysisConfigSchema.parse({
 });
 
 export const dataAnalysisAgent = new Agent({
-  name: agentConfig.name,
+  name: "data-analyst",
   instructions: `You are a specialized data analysis agent with expertise in:
   - Mathematical calculations and statistical analysis (max ${agentConfig.maxDataPoints} data points)
   - Text processing and sentiment analysis (confidence threshold: ${agentConfig.confidenceThreshold})

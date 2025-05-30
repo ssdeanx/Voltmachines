@@ -15,7 +15,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * File manager configuration schema
  */
 const fileManagerConfigSchema = z.object({
-  name: z.string().min(1),
   maxFileSize: z.number().positive().default(10485760), // 10MB default
   allowedExtensions: z.array(z.string()).default(['.js', '.ts', '.json', '.md', '.txt', '.py', '.go']),
   gitBranchLimit: z.number().positive().default(50),
@@ -68,7 +67,6 @@ export type FileManagerConfig = z.infer<typeof fileManagerConfigSchema>;
 
 // Validate agent configuration
 const agentConfig = fileManagerConfigSchema.parse({
-  name: "file-manager",
   maxFileSize: 52428800, // 50MB
   allowedExtensions: ['.js', '.ts', '.tsx', '.jsx', '.json', '.md', '.txt', '.py', '.go', '.rs', '.java'],
   gitBranchLimit: 100,
@@ -88,7 +86,7 @@ const agentConfig = fileManagerConfigSchema.parse({
  * - Documentation and markdown processing
  */
 export const fileManagerAgent = new Agent({
-  name: agentConfig.name,
+  name: "file-manager",
   instructions: `You are a specialized file manager and version control agent with expertise in:
 
 **Configuration:**

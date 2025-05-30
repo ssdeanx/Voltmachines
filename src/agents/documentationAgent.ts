@@ -9,7 +9,6 @@ import { voltAgentMemory } from "../memory/voltAgentMemory.js";
  * Documentation agent configuration schema
  */
 const documentationAgentConfigSchema = z.object({
-  name: z.string().min(1),
   maxDocLength: z.number().positive().default(10000),
   supportedFormats: z.array(z.enum(["markdown", "html", "text", "json"])).default(["markdown", "html", "text"]),
   summarization: z.boolean().default(true),
@@ -20,7 +19,6 @@ const documentationAgentConfigSchema = z.object({
 export type DocumentationAgentConfig = z.infer<typeof documentationAgentConfigSchema>;
 
 const agentConfig = documentationAgentConfigSchema.parse({
-  name: "documentation-agent",
   maxDocLength: 10000,
   supportedFormats: ["markdown", "html", "text"],
   summarization: true,
@@ -29,7 +27,7 @@ const agentConfig = documentationAgentConfigSchema.parse({
 });
 
 export const documentationAgent = new Agent({
-  name: agentConfig.name,
+  name: "documentation-agent",
   instructions: `You are a documentation agent. You can:
 - Generate, summarize, and format technical documentation
 - Use web search and URL fetch tools for research and references

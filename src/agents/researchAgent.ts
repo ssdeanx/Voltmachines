@@ -10,7 +10,6 @@ import { voltAgentMemory } from "../memory/voltAgentMemory.js";
  * Research agent configuration schema
  */
 const researchAgentConfigSchema = z.object({
-  name: z.string().min(1),
   maxResearchLength: z.number().positive().default(8000),
   supportedFormats: z.array(z.enum(["markdown", "html", "text", "json"])).default(["markdown", "text"]),
   summarization: z.boolean().default(true),
@@ -20,7 +19,6 @@ const researchAgentConfigSchema = z.object({
 export type ResearchAgentConfig = z.infer<typeof researchAgentConfigSchema>;
 
 const agentConfig = researchAgentConfigSchema.parse({
-  name: "research-agent",
   maxResearchLength: 8000,
   supportedFormats: ["markdown", "text"],
   summarization: true,
@@ -28,7 +26,7 @@ const agentConfig = researchAgentConfigSchema.parse({
 });
 
 export const researchAgent = new Agent({
-  name: agentConfig.name,
+  name: "research-agent",
   instructions: `You are a research agent. You can:
 - Perform advanced research and fact-finding using web search and URL fetch tools
 - Summarize, analyze, and synthesize information from multiple sources

@@ -9,7 +9,6 @@ import { agentPrompt } from "./agentPrompt.js";
  * Worker agent configuration schema
  */
 const workerAgentConfigSchema = z.object({
-  name: z.string().min(1),
   maxTasks: z.number().positive().default(10),
   capabilities: z.array(z.string()).default(["task execution", "data processing", "context sharing"]),
 });
@@ -17,13 +16,12 @@ const workerAgentConfigSchema = z.object({
 export type WorkerAgentConfig = z.infer<typeof workerAgentConfigSchema>;
 
 const agentConfig = workerAgentConfigSchema.parse({
-  name: "worker-agent",
   maxTasks: 10,
   capabilities: ["task execution", "data processing", "context sharing"],
 });
 
 export const workerAgent = new Agent({
-  name: agentConfig.name,
+  name: "worker-agent",
   instructions: agentPrompt({
     capabilities: agentConfig.capabilities.join(", "),
     goal: "Assist the supervisor agent and sub-agents with delegated tasks.",

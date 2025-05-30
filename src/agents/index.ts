@@ -27,7 +27,7 @@ import { developerAgent } from './developerAgent.js';
 import { browserAgent } from './browserAgent.js';
 import { documentationAgent } from './documentationAgent.js';
 import { researchAgent } from './researchAgent.js';
-
+import { workerAgent } from './workerAgent.js';
 
 export const agentRegistry = {
   browser: browserAgent,
@@ -39,6 +39,6 @@ export const agentRegistry = {
   developer: developerAgent,
   documentation: documentationAgent,
   research: researchAgent,
+  worker: workerAgent,
 } as const;
-
 

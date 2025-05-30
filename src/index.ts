@@ -25,6 +25,7 @@ import path from "node:path";
 import { delegateTaskTool, getAvailableAgents } from "./tools/delegationTool.js";
 import { agentRegistry } from "./agents/index.js";
 import { developmentHooks } from "./agents/voltAgentHooks.js";
+import { getAgentPrompt } from "./agents/agentPrompt.js";
 import { supervisorRetriever } from "./memory/supervisorRetriever.js";
 import { voltAgentMemory } from "./memory/voltAgentMemory.js";
 
@@ -179,6 +180,42 @@ try {
 }
 
 /**
+ * Supervisor agent configuration schema
+ */
+const supervisorConfigSchema = z.object({
+  capabilities: z.array(z.string()).default([
+    "agent coordination and delegation",
+    "task breakdown and workflow management", 
+    "file system operations",
+    "memory management and conversation context",
+    "multi-agent workflow coordination",
+    "result synthesis and reporting"
+  ]),
+  maxSubAgents: z.number().positive().default(10),
+  delegationTimeout: z.number().positive().default(300000), // 5 minutes
+  enableFileSystem: z.boolean().default(true),
+  enableMemoryManagement: z.boolean().default(true),
+});
+
+export type SupervisorConfig = z.infer<typeof supervisorConfigSchema>;
+
+// Validate supervisor configuration
+const supervisorConfig = supervisorConfigSchema.parse({
+  capabilities: [
+    "agent coordination and delegation",
+    "task breakdown and workflow management", 
+    "file system operations",
+    "memory management and conversation context",
+    "multi-agent workflow coordination",
+    "result synthesis and reporting"
+  ],
+  maxSubAgents: 10,
+  delegationTimeout: 300000,
+  enableFileSystem: true,
+  enableMemoryManagement: true,
+});
+
+/**
  * The main supervisor agent that orchestrates the entire multi-agent system.
  * 
  * This agent serves as the central coordinator, responsible for:
@@ -200,41 +237,12 @@ try {
  */
 export const supervisorAgent = new Agent({
   name: "supervisor",
-  instructions: `You are a supervisor agent that coordinates multiple specialized agents and has access to filesystem tools.
-
-Available Subagents:
-- dataAnalyst: Data analysis and statistics
-- systemAdmin: System monitoring and administration
-- contentCreator: Content generation and writing
-- problemSolver: Problem solving and reasoning
-- fileManager: File and repository management
-- developer: Software development and code analysis
-
-Your capabilities:
-- Agent coordination and delegation via delegate_task tool
-- File system operations (read, write, list files)
-- Memory management and conversation context
-- Task breakdown and workflow management
-
-Your responsibilities:
-1. Analyze incoming requests and determine which agent(s) should handle them
-2. Use the delegate_task tool to hand off tasks to specialized subagents
-3. Coordinate multi-agent workflows for complex requests
-4. Use filesystem tools when file operations are needed
-5. Maintain conversation context and memory
-6. Synthesize results from multiple agents into coherent responses
-
-Delegation Guidelines:
-- Use delegate_task tool for specialized tasks that match agent expertise
-- For data analysis tasks: delegate to 'dataAnalyst'
-- For code/repository tasks: delegate to 'developer'
-- For content creation: delegate to 'contentCreator'
-- For file operations: delegate to 'fileManager'
-- For system monitoring: delegate to 'systemAdmin'
-- For complex problems: delegate to 'problemSolver'
-- You can delegate to multiple agents simultaneously for comprehensive results
-
-Always explain your reasoning for agent selection and provide clear task descriptions.`,
+  instructions: getAgentPrompt({
+    capabilities: supervisorConfig.capabilities,
+    goal: "Coordinate multiple specialized agents and orchestrate complex multi-agent workflows.",
+    context: `Available subagents: dataAnalyst, systemAdmin, contentCreator, problemSolver, fileManager, developer. Configuration: Max subagents: ${supervisorConfig.maxSubAgents}, Delegation timeout: ${supervisorConfig.delegationTimeout}ms, File system: ${supervisorConfig.enableFileSystem ? 'enabled' : 'disabled'}, Memory management: ${supervisorConfig.enableMemoryManagement ? 'enabled' : 'disabled'}.`,
+    task: "Analyze requests, delegate to appropriate agents, coordinate workflows, and synthesize results.",
+  }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),

@@ -9,7 +9,6 @@ import type { OnEndHookArgs } from '@voltagent/core';
  * Developer agent configuration schema
  */
 const developerConfigSchema = z.object({
-  name: z.string().min(1),
   maxRepoSize: z.number().positive().default(1000000), // 1MB default
   supportedLanguages: z.array(z.string()).default(['typescript', 'javascript', 'python', 'go', 'rust']),
   codeQualityThreshold: z.number().min(0).max(10).default(7),
@@ -46,7 +45,6 @@ export type DeveloperConfig = z.infer<typeof developerConfigSchema>;
 
 // Validate agent configuration
 export const agentConfig = developerConfigSchema.parse({
-  name: "developer",
   maxRepoSize: 5000000, // 5MB
   supportedLanguages: ['typescript', 'javascript', 'python', 'go', 'rust', 'java', 'c#'],
   codeQualityThreshold: 8,
@@ -55,7 +53,7 @@ export const agentConfig = developerConfigSchema.parse({
 });
 
 export const developerAgent = new Agent({
-  name: agentConfig.name,
+  name: "developer",
   instructions: `You are a specialized developer agent with expertise in:
   
   **Configuration:**
