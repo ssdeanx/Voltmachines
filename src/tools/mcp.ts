@@ -87,6 +87,145 @@ export const filesystemMCP = new MCPConfiguration({
 //}
 
 /**
+ * Exa Search MCP Server Configuration
+ * Provides integration with Exa Search external tools via MCP
+ * Uses only the API key, not a full URL
+ */
+export const exaSearchMCP = new MCPConfiguration({
+  servers: {
+    exa: {
+      type: "http",
+      url: `https://server.smithery.ai/exa/mcp?api_key=${process.env.SMITHERY_URL_API}`,
+    },
+  },
+});
+
+/**
+ * Get Exa Search MCP tools
+ * Returns tools for Exa Search operations via MCP
+ */
+export async function getExaSearchTools() {
+  try {
+    return await exaSearchMCP.getTools();
+  } catch (error) {
+    console.warn('Failed to initialize Exa Search MCP tools:', error);
+    return [];
+  }
+}
+
+/**
+ * Winterm MCP Server Configuration
+ * Provides integration with Winterm tools via MCP
+ * Uses the API key from the environment variable
+ */
+export const wintermMCP = new MCPConfiguration({
+  servers: {
+    winterm: {
+      type: "stdio",
+      command: "npx",
+      args: [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@capecoma/winterm-mcp",
+        "--key",
+        process.env.SMITHERY_URL_API || ""
+      ]
+    }
+  }
+});
+
+/**
+ * Get Winterm MCP tools
+ * Returns tools for Winterm operations via MCP
+ */
+export async function getWintermTools() {
+  try {
+    return await wintermMCP.getTools();
+  } catch (error) {
+    console.warn('Failed to initialize Winterm MCP tools:', error);
+    return [];
+  }
+}
+
+/**
+ * Gitingest MCP Server Configuration
+ * Provides integration with Gitingest external tools via MCP
+ */
+export const gitingestMCP = new MCPConfiguration({
+  servers: {
+    gitingest: {
+      type: "http",
+      url: `https://server.smithery.ai/@puravparab/gitingest-mcp/mcp?api_key=${process.env.SMITHERY_URL_API}`,
+    },
+  },
+});
+
+/**
+ * Get Gitingest MCP tools
+ * Returns tools for Gitingest operations via MCP
+ */
+export async function getGitingestTools() {
+  try {
+    return await gitingestMCP.getTools();
+  } catch (error) {
+    console.warn('Failed to initialize Gitingest MCP tools:', error);
+    return [];
+  }
+}
+
+/**
+ * Markdown Downloader MCP Server Configuration
+ * Provides integration with Markdown Downloader external tools via MCP
+ *
+ * Exposes tool definitions for:
+ * - download_markdown: Download a webpage as markdown (with url, subdirectory)
+ * - list_downloaded_files: List all downloaded markdown files (with optional subdirectory)
+ * - set_download_directory: Set the main local download folder (directory)
+ * - get_download_directory: Get the current download directory
+ * - create_subdirectory: Create a new subdirectory in the root download folder (name)
+ *
+ * @param savePath - Optional absolute or relative file path where markdown should be saved
+ * @returns Array of Markdown Downloader tools with save location support
+ */
+export const markdownDownloaderMCP = new MCPConfiguration({
+  servers: {
+    markdownDownloader: {
+      type: "http",
+      url: `https://server.smithery.ai/@dazeb/markdown-downloader/mcp?api_key=${process.env.SMITHERY_URL_API}&rootDir=${encodeURIComponent(path.resolve("./data"))}`,
+    },
+  },
+});
+
+/**
+ * Get Markdown Downloader MCP tools
+ * Returns tools for Markdown Downloader operations via MCP
+ *
+ * @param savePath - Optional subdirectory or file path for saving markdown
+ * @returns Array of Markdown Downloader tools with save location support
+ */
+export async function getMarkdownDownloaderTools(savePath?: string) {
+  try {
+    if (savePath) {
+      // Pass savePath as a query param if provided, always use ./data as rootDir
+      const customMCP = new MCPConfiguration({
+        servers: {
+          markdownDownloader: {
+            type: "http",
+            url: `https://server.smithery.ai/@dazeb/markdown-downloader/mcp?api_key=${process.env.SMITHERY_URL_API}&rootDir=${encodeURIComponent(path.resolve("./data"))}&savePath=${encodeURIComponent(savePath)}`,
+          },
+        },
+      });
+      return await customMCP.getTools();
+    }
+    return await markdownDownloaderMCP.getTools();
+  } catch (error) {
+    console.warn('Failed to initialize Markdown Downloader MCP tools:', error);
+    return [];
+  }
+}
+
+/**
  * Get filesystem MCP tools
  * Returns tools for file operations: read, write, list, create directories
  */
@@ -110,11 +249,23 @@ export async function initializeMCPTools() {
   const fsTools = await getFilesystemTools();
   tools.push(...fsTools);
   
-  // Add Composio tools (GitHub, Gmail, Slack, etc.)
-  //const composioTools = await getComposioTools();
-  //tools.push(...composioTools);
+  // Add Exa Search tools
+  const exaSearchTools = await getExaSearchTools();
+  tools.push(...exaSearchTools);
   
-  console.log(`🛠️  Initialized ${tools.length} MCP tools (${fsTools.length} filesystem)`);
+  // Add Winterm tools
+  const wintermTools = await getWintermTools();
+  tools.push(...wintermTools);
+  
+  // Add Gitingest tools
+  const gitingestTools = await getGitingestTools();
+  tools.push(...gitingestTools);
+  
+  // Add Markdown Downloader tools
+  const markdownDownloaderTools = await getMarkdownDownloaderTools();
+  tools.push(...markdownDownloaderTools);
+  
+  console.log(`🛠️  Initialized ${tools.length} MCP tools (${fsTools.length} filesystem, ${exaSearchTools.length} exa search, ${wintermTools.length} winterm, ${gitingestTools.length} gitingest, ${markdownDownloaderTools.length} markdown-downloader)`);
   
   return tools;
 }

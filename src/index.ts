@@ -20,7 +20,7 @@ export { z };
 
 import { VoltAgent, Agent, VoltAgentExporter } from "@voltagent/core";
 import { GoogleGenAIProvider } from "@voltagent/google-ai";
-import { initializeMCPTools } from "./tools/mcp.js";
+import { getExaSearchTools, getWintermTools, getFilesystemTools, getGitingestTools, getMarkdownDownloaderTools } from "./tools/mcp.js";
 import path from "node:path";
 import { delegateTaskTool, getAvailableAgents } from "./tools/delegationTool.js";
 import { agentRegistry } from "./agents/index.js";
@@ -168,8 +168,20 @@ const systemConfig = voltAgentConfigSchema.parse({
   },
 });
 
-// Initialize MCP tools
-const mcpTools = await initializeMCPTools();
+// Build MCP tools for supervisor (filesystem, exa search, winterm, gitingest, markdown-downloader) before main initialization
+const fsTools = await getFilesystemTools();
+const exaSearchTools = await getExaSearchTools();
+const wintermTools = await getWintermTools();
+const gitingestTools = await getGitingestTools();
+// Always use './data' as the root directory for markdown downloads
+const markdownDownloaderTools = await getMarkdownDownloaderTools();
+const mcpTools = [
+  ...fsTools,
+  ...exaSearchTools,
+  ...wintermTools,
+  ...gitingestTools,
+  ...markdownDownloaderTools
+];
 
 // Create data directory for filesystem MCP if it doesn't exist
 const dataDir = path.resolve("./data");
@@ -180,39 +192,63 @@ try {
 }
 
 /**
- * Supervisor agent configuration schema
+ * Supervisor agent configuration schema (extended)
+ *
+ * Includes explicit tool capability fields and unified data/markdown directory config.
  */
 const supervisorConfigSchema = z.object({
   capabilities: z.array(z.string()).default([
     "agent coordination and delegation",
-    "task breakdown and workflow management", 
+    "task breakdown and workflow management",
     "file system operations",
     "memory management and conversation context",
     "multi-agent workflow coordination",
-    "result synthesis and reporting"
+    "result synthesis and reporting",
+    "terminal command execution",
+    "web search",
+    "windows terminal access",
+    "markdown download and management",
+    "git repository ingestion"
   ]),
-  maxSubAgents: z.number().positive().default(10),
-  delegationTimeout: z.number().positive().default(300000), // 5 minutes
+  maxSubAgents: z.number().positive().default(15),
+  delegationTimeout: z.number().positive().default(300000),
   enableFileSystem: z.boolean().default(true),
   enableMemoryManagement: z.boolean().default(true),
+  enableTerminal: z.boolean().default(true),
+  enableSearch: z.boolean().default(true),
+  enableWindowsTerminal: z.boolean().default(true),
+  enableMarkdownDownloader: z.boolean().default(true),
+  enableGitingest: z.boolean().default(true),
+  dataDirectory: z.string().default(path.resolve("./data")),
 });
 
 export type SupervisorConfig = z.infer<typeof supervisorConfigSchema>;
 
 // Validate supervisor configuration
-const supervisorConfig = supervisorConfigSchema.parse({
+const supervisorConfig: SupervisorConfig = supervisorConfigSchema.parse({
   capabilities: [
     "agent coordination and delegation",
-    "task breakdown and workflow management", 
+    "task breakdown and workflow management",
     "file system operations",
     "memory management and conversation context",
     "multi-agent workflow coordination",
-    "result synthesis and reporting"
+    "result synthesis and reporting",
+    "terminal command execution",
+    "web search",
+    "windows terminal access",
+    "markdown download and management",
+    "git repository ingestion"
   ],
-  maxSubAgents: 10,
+  maxSubAgents: 15,
   delegationTimeout: 300000,
   enableFileSystem: true,
   enableMemoryManagement: true,
+  enableTerminal: true,
+  enableSearch: true,
+  enableWindowsTerminal: true,
+  enableMarkdownDownloader: true,
+  enableGitingest: true,
+  dataDirectory: path.resolve("./data"),
 });
 
 /**
@@ -239,9 +275,9 @@ export const supervisorAgent = new Agent({
   name: "supervisor",
   instructions: getAgentPrompt({
     capabilities: supervisorConfig.capabilities,
-    goal: "Coordinate multiple specialized agents and orchestrate complex multi-agent workflows.",
-    context: `Available subagents: dataAnalyst, systemAdmin, contentCreator, problemSolver, fileManager, developer. Configuration: Max subagents: ${supervisorConfig.maxSubAgents}, Delegation timeout: ${supervisorConfig.delegationTimeout}ms, File system: ${supervisorConfig.enableFileSystem ? 'enabled' : 'disabled'}, Memory management: ${supervisorConfig.enableMemoryManagement ? 'enabled' : 'disabled'}.`,
-    task: "Analyze requests, delegate to appropriate agents, coordinate workflows, and synthesize results.",
+    goal: `Act as the VoltMachines system's central orchestrator, autonomously coordinating, delegating, and executing complex multi-agent workflows. Leverage advanced tool access—including terminal, Windows terminal, web search, filesystem, markdown downloader, and gitingest—to deliver seamless, context-rich, and auditable results. Ensure all data, file, and markdown operations are unified in the ${supervisorConfig.dataDirectory} directory for maximum traceability, compliance, and operational efficiency. Proactively monitor agent health, optimize resource allocation, and enforce robust security and auditability across all actions.`,
+    context: `Subagents: dataAnalyst, systemAdmin, contentCreator, problemSolver, fileManager, developer, worker. Config: Max subagents: ${supervisorConfig.maxSubAgents}, Delegation timeout: ${supervisorConfig.delegationTimeout}ms, File system: ${supervisorConfig.enableFileSystem ? 'enabled' : 'disabled'}, Memory: ${supervisorConfig.enableMemoryManagement ? 'enabled' : 'disabled'}, Terminal: ${supervisorConfig.enableTerminal ? 'enabled' : 'disabled'}, Search: ${supervisorConfig.enableSearch ? 'enabled' : 'disabled'}, Windows terminal: ${supervisorConfig.enableWindowsTerminal ? 'enabled' : 'disabled'}, Markdown: ${supervisorConfig.enableMarkdownDownloader ? 'enabled' : 'disabled'}, Gitingest: ${supervisorConfig.enableGitingest ? 'enabled' : 'disabled'}. All persistent operations use ${supervisorConfig.dataDirectory}.`,
+    task: `Continuously analyze user/system requests, select and delegate to the most appropriate specialized agents, and orchestrate workflows that may span terminal, search, markdown, git, and file operations. Manage memory and context for every operation, synthesize results into actionable outputs, and ensure all persistent data is stored in the unified directory. Proactively detect workflow bottlenecks, enforce security, and provide detailed audit trails for every action.`,
   }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -254,19 +290,23 @@ export const supervisorAgent = new Agent({
     delegationTimeout: supervisorConfig.delegationTimeout,
     enableFileSystem: supervisorConfig.enableFileSystem,
     enableMemoryManagement: supervisorConfig.enableMemoryManagement,
-     // Enable context sharing for task delegation
+    enableTerminal: supervisorConfig.enableTerminal,
+    enableSearch: supervisorConfig.enableSearch,
+    enableWindowsTerminal: supervisorConfig.enableWindowsTerminal,
+    enableMarkdownDownloader: supervisorConfig.enableMarkdownDownloader,
+    enableGitingest: supervisorConfig.enableGitingest,
+    dataDirectory: supervisorConfig.dataDirectory,
     enableContextSharing: true,
-    // Enable additional features for data processing
     enableDataProcessing: true,
-    // Additional memory options
-    maxSteps: 100, // Limit steps to prevent excessive memory usage
-    // Enable additional features for agent coordination
     enableAgentCoordination: true,
-    // Enable additional features for file system operations
+    maxSteps: 100,
     maxContextLength: 1000000,
     thinkingTokens: 1024,
     storageLimit: 5000,
     storageType: "voltage",
+    // Add future-proofing for advanced memory/trace features
+    enableAuditTrail: true,
+    enableWorkflowTracing: true,
   },
   subAgents: Object.values(agentRegistry),
   hooks: {
@@ -435,7 +475,7 @@ async function getSystemStatus(): Promise<SystemStatus> {
     memory: {
       connected: true,
       conversations: conversations.length,
-      totalMessages: 0, // Calculate from conversations
+      totalMessages: 0 // Calculate from conversations
     },
     tools: {
       mcpConnected: mcpTools.length > 0,
