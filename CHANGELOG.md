@@ -5,6 +5,22 @@ All notable changes to the VoltAgent multi-agent system project are documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.13] - 2025-05-30
+
+### ✨ Dynamic Toolkit & Context Awareness
+
+#### **Added**
+- **Dynamic Toolkit Capabilities:** Supervisor agent and config now always reflect the real toolset, auto-synced in config, context, and memory options.
+- **Memory Context:** `toolkitCapabilities` now available in `memoryOptions` for all subagents and consumers.
+- **LLM Context:** Supervisor agent's prompt/context now always lists the real toolkit, so the LLM and UI are always aware of available tools.
+
+#### **Improvements**
+- **Type Safety & DRY:** No manual sync needed for capabilities/tool names—everything is auto-generated from the toolkit.
+- **Backward Compatibility:** All previous features and tools remain backward compatible.
+- **No Build or Linter Errors:** Full TypeScript build and lint pass.
+
+#### **See README for usage and upgrade notes.**
+
 ## [0.0.12] - 2025-05-30
 
 ### 🚀 **Unified Agent Prompt & Capabilities Pattern**
