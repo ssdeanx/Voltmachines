@@ -23,6 +23,7 @@ import { GoogleGenAIProvider } from "@voltagent/google-ai";
 import { getExaSearchTools, getWintermTools, getFilesystemTools, getGitingestTools, getMarkdownDownloaderTools } from "./tools/mcp.js";
 import path from "node:path";
 import { delegateTaskTool, getAvailableAgents } from "./tools/delegationTool.js";
+import { supervisorToolset } from "./tools/supervisorTools.js";
 import { agentRegistry } from "./agents/index.js";
 import { developmentHooks } from "./agents/voltAgentHooks.js";
 import { getAgentPrompt } from "./agents/agentPrompt.js";
@@ -191,25 +192,16 @@ try {
   console.warn('Could not create data directory:', error);
 }
 
+// Dynamically extract tool names for capabilities
+const toolkitCapabilities = supervisorToolset.map(tool => tool.name);
+
 /**
  * Supervisor agent configuration schema (extended)
  *
  * Includes explicit tool capability fields and unified data/markdown directory config.
  */
 const supervisorConfigSchema = z.object({
-  capabilities: z.array(z.string()).default([
-    "agent coordination and delegation",
-    "task breakdown and workflow management",
-    "file system operations",
-    "memory management and conversation context",
-    "multi-agent workflow coordination",
-    "result synthesis and reporting",
-    "terminal command execution",
-    "web search",
-    "windows terminal access",
-    "markdown download and management",
-    "git repository ingestion"
-  ]),
+  capabilities: z.array(z.string()).default(toolkitCapabilities),
   maxSubAgents: z.number().positive().default(15),
   delegationTimeout: z.number().positive().default(300000),
   enableFileSystem: z.boolean().default(true),
@@ -224,21 +216,9 @@ const supervisorConfigSchema = z.object({
 
 export type SupervisorConfig = z.infer<typeof supervisorConfigSchema>;
 
-// Validate supervisor configuration
+// Use the dynamic capabilities in the config
 const supervisorConfig: SupervisorConfig = supervisorConfigSchema.parse({
-  capabilities: [
-    "agent coordination and delegation",
-    "task breakdown and workflow management",
-    "file system operations",
-    "memory management and conversation context",
-    "multi-agent workflow coordination",
-    "result synthesis and reporting",
-    "terminal command execution",
-    "web search",
-    "windows terminal access",
-    "markdown download and management",
-    "git repository ingestion"
-  ],
+  capabilities: toolkitCapabilities,
   maxSubAgents: 15,
   delegationTimeout: 300000,
   enableFileSystem: true,
@@ -276,14 +256,18 @@ export const supervisorAgent = new Agent({
   instructions: getAgentPrompt({
     capabilities: supervisorConfig.capabilities,
     goal: `Act as the VoltMachines system's central orchestrator, autonomously coordinating, delegating, and executing complex multi-agent workflows. Leverage advanced tool access—including terminal, Windows terminal, web search, filesystem, markdown downloader, and gitingest—to deliver seamless, context-rich, and auditable results. Ensure all data, file, and markdown operations are unified in the ${supervisorConfig.dataDirectory} directory for maximum traceability, compliance, and operational efficiency. Proactively monitor agent health, optimize resource allocation, and enforce robust security and auditability across all actions.`,
-    context: `Subagents: dataAnalyst, systemAdmin, contentCreator, problemSolver, fileManager, developer, worker. Config: Max subagents: ${supervisorConfig.maxSubAgents}, Delegation timeout: ${supervisorConfig.delegationTimeout}ms, File system: ${supervisorConfig.enableFileSystem ? 'enabled' : 'disabled'}, Memory: ${supervisorConfig.enableMemoryManagement ? 'enabled' : 'disabled'}, Terminal: ${supervisorConfig.enableTerminal ? 'enabled' : 'disabled'}, Search: ${supervisorConfig.enableSearch ? 'enabled' : 'disabled'}, Windows terminal: ${supervisorConfig.enableWindowsTerminal ? 'enabled' : 'disabled'}, Markdown: ${supervisorConfig.enableMarkdownDownloader ? 'enabled' : 'disabled'}, Gitingest: ${supervisorConfig.enableGitingest ? 'enabled' : 'disabled'}. All persistent operations use ${supervisorConfig.dataDirectory}.`,
+    context: `Available tools: ${supervisorConfig.capabilities.join(', ')}. Subagents: dataAnalyst, systemAdmin, contentCreator, problemSolver, fileManager, developer, worker. Config: Max subagents: ${supervisorConfig.maxSubAgents}, Delegation timeout: ${supervisorConfig.delegationTimeout}ms, File system: ${supervisorConfig.enableFileSystem ? 'enabled' : 'disabled'}, Memory: ${supervisorConfig.enableMemoryManagement ? 'enabled' : 'disabled'}, Terminal: ${supervisorConfig.enableTerminal ? 'enabled' : 'disabled'}, Search: ${supervisorConfig.enableSearch ? 'enabled' : 'disabled'}, Windows terminal: ${supervisorConfig.enableWindowsTerminal ? 'enabled' : 'disabled'}, Markdown: ${supervisorConfig.enableMarkdownDownloader ? 'enabled' : 'disabled'}, Gitingest: ${supervisorConfig.enableGitingest ? 'enabled' : 'disabled'}. All persistent operations use ${supervisorConfig.dataDirectory}.`,
     task: `Continuously analyze user/system requests, select and delegate to the most appropriate specialized agents, and orchestrate workflows that may span terminal, search, markdown, git, and file operations. Manage memory and context for every operation, synthesize results into actionable outputs, and ensure all persistent data is stored in the unified directory. Proactively detect workflow bottlenecks, enforce security, and provide detailed audit trails for every action.`,
   }),
   llm: new GoogleGenAIProvider({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   }),
   model: "gemini-2.5-flash-preview-05-20",
-  tools: [...mcpTools, delegateTaskTool],
+  tools: [
+    ...mcpTools,
+    ...supervisorToolset,
+    delegateTaskTool
+  ],
   memory: voltAgentMemory,
   memoryOptions: {
     maxSubAgents: supervisorConfig.maxSubAgents,
@@ -307,6 +291,24 @@ export const supervisorAgent = new Agent({
     // Add future-proofing for advanced memory/trace features
     enableAuditTrail: true,
     enableWorkflowTracing: true,
+    enableCacheManager: true,
+    enableDataValidator: true,
+    enableLogAnalyzer: true,
+    enableConfigManager: true,
+    enableSecretManager: true,
+    enableNotificationSystem: true,
+    enableBatchProcessor: true,
+    enableQueueManager: true,
+    enableResourceMonitor: true,
+    enableTaskScheduler: true,
+    enableThink: true,
+    enableAnalyze: true,
+    enableReflect: true,
+    enableSummarize: true,
+    enablePlan: true,
+    enableDataVersioning: true,
+    enableSystemHealth: true,
+    toolkitCapabilities: supervisorConfig.capabilities,
   },
   subAgents: Object.values(agentRegistry),
   hooks: {
