@@ -255,3 +255,16 @@ This document outlines development tasks for enhancing the VoltAgent multi-agent
 ---
 
 **Note**: All implementations should follow VoltAgent core patterns, use Zod schemas for validation, include comprehensive TSDoc documentation, and maintain strict TypeScript compliance.
+
+```ts
+// Example using streamText for a chat-like interaction
+async function chat(input: string) {
+  console.log(`User: ${input}`);
+  // Use streamText for interactive responses
+  const stream = await agent.streamText(input);
+
+  for await (const chunk of stream.textStream) {
+    console.log(chunk);
+  }
+}
+```

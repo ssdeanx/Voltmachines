@@ -27,7 +27,7 @@ import { agentRegistry } from "./agents/index.js";
 import { developmentHooks } from "./agents/voltAgentHooks.js";
 import { getAgentPrompt } from "./agents/agentPrompt.js";
 import { supervisorRetriever } from "./memory/supervisorRetriever.js";
-import { voltAgentMemory } from "./memory/voltAgentMemory.js";
+import { voltAgentMemory, getOrStartThread } from "./memory/voltAgentMemory.js";
 
 /**
  * Configuration schema for the VoltMachines system.
@@ -323,6 +323,38 @@ export const generateText = async (
 };
 
 /**
+ * Generates a structured object using the supervisorAgent's LLM and Zod schema validation.
+ *
+ * @param prompt - The prompt string to send to the agent.
+ * @param schema - Zod schema describing the expected object structure.
+ * @param options - Optional generation options.
+ * @returns Promise resolving to the generated object.
+ * @throws If object generation or validation fails.
+ *
+ * @example
+ *
+ * const result = await generateObject(
+ *   "Summarize the project status as an object.",
+ *   z.object({ summary: z.string(), status: z.enum(["healthy", "degraded", "critical"]) })
+ * );
+ * console.log(result.object);
+ */
+export const generateObject = async <T>(
+  prompt: string,
+  schema: import("zod").ZodSchema<T>,
+  options?: Record<string, unknown>
+): Promise<{ object: T; usage?: unknown }> => {
+  try {
+    const result = await supervisorAgent.generateObject(prompt, schema, options);
+    return result;
+  } catch (error) {
+    // TODO: Integrate project logger if available
+    console.error("[supervisorAgent.generateObject] Error:", error);
+    throw error;
+  }
+};
+
+/**
  * Main VoltMachines instance with comprehensive multi-agent capabilities.
  * 
  * This is the primary interface for the VoltMachines system, configured with
@@ -458,6 +490,9 @@ export {
 // Re-export memory utilities
 export { getOrStartThread, listThreads, getThreadHistory } from "./memory/voltAgentMemory.js";
 
+// Import readline properly
+import readline from 'readline';
+
 /**
  * Development utilities and testing functions.
  * 
@@ -498,3 +533,285 @@ export const development = {
     return systemConfig;
   },
 };
+
+/**
+ * Interactive chat function using streamText for real-time responses with the supervisor agent
+ * 
+ * @param input - User input message
+ * @param options - Optional parameters like userId and conversationId
+ * @returns Promise resolving when the streaming is complete
+ * 
+ * @example
+ * 
+ * // Simple chat interaction
+ * await chat("Hello, analyze the project structure");
+ * 
+ * // Persistent conversation
+ * const conversationId = await getOrStartThread('main-user');
+ * await chat("Create a data analysis report", { 
+ *   userId: 'main-user', 
+ *   conversationId 
+ * });
+ * 
+ */
+export async function chat(
+  input: string, 
+  options: { userId?: string; conversationId?: string } = {}
+): Promise<void> {
+  try {
+    console.log(`\n🧑 User: ${input}`);
+    
+    // Ensure we have a conversation ID
+    const conversationId = options.conversationId || await getOrStartThread('supervisor');
+    const userId = options.userId || 'main-user';
+    
+    console.log(`🏛️ Supervisor: `, ''); // Start on same line for streaming
+    
+    // Use supervisor agent with streaming and proper memory context
+    const stream = await supervisorAgent.streamText(input, {
+      userId,
+      conversationId
+    });
+
+    // Stream the response in real-time
+    for await (const chunk of stream.textStream) {
+      process.stdout.write(chunk); // Real-time output without newlines
+    }
+    console.log('\n'); // Add newline when complete
+    
+    console.log(`💾 Conversation saved to thread: ${conversationId}\n`);
+    
+  } catch (error) {
+    console.error('❌ Chat Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Chat directly with a specific agent using streamText
+ * 
+ * @param agentName - Name of the agent from the registry
+ * @param input - User input message
+ * @param options - Optional parameters like userId and conversationId
+ * @returns Promise resolving when the streaming is complete
+ * 
+ * @example
+ * 
+ * // Chat with data analyst
+ * await chatWithAgent('dataAnalyst', 'Analyze the sales data');
+ * 
+ * // Chat with browser agent
+ * await chatWithAgent('browser', 'Navigate to google.com and take a screenshot');
+ * 
+ */
+export async function chatWithAgent(
+  agentName: string,
+  input: string,
+  options: { userId?: string; conversationId?: string } = {}
+): Promise<void> {
+  try {
+    const agent = agentRegistry[agentName as keyof typeof agentRegistry];
+    
+    if (!agent) {
+      console.error(`❌ Agent '${agentName}' not found. Available agents:`, Object.keys(agentRegistry));
+      return;
+    }
+    
+    console.log(`\n🧑 User: ${input}`);
+    
+    // Ensure we have a conversation ID for this agent
+    const conversationId = options.conversationId || await getOrStartThread(agentName);
+    const userId = options.userId || 'main-user';
+    
+    console.log(`🤖 ${agentName}: `, ''); // Start on same line for streaming
+    
+    // Always use streamText for all agents
+    const stream = await agent.streamText(input, {
+      userId,
+      conversationId
+    });
+
+    // Stream the response in real-time
+    for await (const chunk of stream.textStream) {
+      process.stdout.write(chunk);
+    }
+    console.log('\n');
+    
+    console.log(`💾 Conversation saved to ${agentName} thread: ${conversationId}\n`);
+    
+  } catch (error) {
+    console.error(`❌ Error chatting with ${agentName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Interactive CLI chat session with agent selection
+ * 
+ * Provides a full interactive command-line chat interface where users can:
+ * - Chat with the supervisor (default)
+ * - Switch to specific agents using commands like "/agent dataAnalyst"
+ * - View available agents with "/agents"
+ * - Exit with "/exit"
+ * 
+ * @param startingAgent - Initial agent to chat with (default: 'supervisor')
+ * 
+ * @example
+ * 
+ * // Start interactive chat session
+ * await startChatSession();
+ * 
+ * // Start with a specific agent
+ * await startChatSession('dataAnalyst');
+ * 
+ */
+export async function startChatSession(startingAgent: string = 'supervisor'): Promise<void> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  let currentAgent = startingAgent;
+  let conversationId = await getOrStartThread(currentAgent);
+  
+  console.log('🤖 VoltAgent Multi-Agent Chat Started!');
+  console.log('📋 Commands:');
+  console.log('  /agent <name>  - Switch to specific agent');
+  console.log('  /agents        - List available agents');
+  console.log('  /status        - Show system status');
+  console.log('  /exit          - Quit chat session');
+  console.log(`\n🎯 Current Agent: ${currentAgent}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  const askQuestion = () => {
+    rl.question('You: ', async (input: string) => {
+      try {
+        // Handle commands
+        if (input.startsWith('/')) {
+          const [command, ...args] = input.slice(1).split(' ');
+          
+          switch (command.toLowerCase()) {
+            case 'exit': {
+              console.log('👋 Goodbye!');
+              rl.close();
+              return;
+            }
+              
+            case 'agent': {
+              const agentName = args[0];
+              if (agentName && agentRegistry[agentName as keyof typeof agentRegistry]) {
+                currentAgent = agentName;
+                conversationId = await getOrStartThread(currentAgent);
+                console.log(`🔄 Switched to ${agentName} agent\n`);
+              } else if (agentName === 'supervisor') {
+                currentAgent = 'supervisor';
+                conversationId = await getOrStartThread('supervisor');
+                console.log(`🔄 Switched to supervisor agent\n`);
+              } else {
+                console.log(`❌ Agent '${agentName}' not found. Available agents:`, 
+                  ['supervisor', ...Object.keys(agentRegistry)]);
+              }
+              break;
+            }
+              
+            case 'agents': {
+              console.log('📋 Available Agents:');
+              console.log('  🏛️ supervisor - Main orchestrator');
+              Object.keys(agentRegistry).forEach(name => {
+                console.log(`  🤖 ${name}`);
+              });
+              console.log('');
+              break;
+            }
+              
+            case 'status': {
+              const status = await getSystemStatus();
+              console.log('📊 System Status:', status.status);
+              console.log(`💾 Conversations: ${status.memory.conversations}`);
+              console.log(`🛠️ Tools: ${status.tools.toolCount}`);
+              console.log(`⚡ Uptime: ${Math.round(status.performance.uptime)}s\n`);
+              break;
+            }
+              
+            default: {
+              console.log(`❌ Unknown command: /${command}`);
+              console.log('📋 Available commands: /agent, /agents, /status, /exit\n');
+            }
+          }
+          
+          askQuestion();
+          return;
+        }
+
+        // Regular chat input
+        if (currentAgent === 'supervisor') {
+          await chat(input, { 
+            userId: 'main-user', 
+            conversationId 
+          });
+        } else {
+          await chatWithAgent(currentAgent, input, { 
+            userId: 'main-user', 
+            conversationId 
+          });
+        }
+        
+      } catch (error) {
+        console.error('❌ Error:', error);
+      }
+
+      askQuestion(); // Continue the conversation
+    });
+  };
+
+  askQuestion();
+}
+
+/**
+ * Quick test function to verify all agents are working with streamText
+ * 
+ * @returns Promise resolving when all agent tests are complete
+ * 
+ * @example
+ * 
+ * // Test all agents
+ * await testAllAgents();
+ * 
+ */
+export async function testAllAgents(): Promise<void> {
+  console.log('🧪 Testing all agents with streamText...\n');
+  
+  // Test supervisor
+  console.log('🏛️ Testing Supervisor Agent:');
+  await chat('Hello, can you introduce yourself?');
+  
+  // Test each agent
+  const agents = Object.keys(agentRegistry);
+  for (const agentName of agents) {
+    console.log(`🤖 Testing ${agentName} Agent:`);
+    await chatWithAgent(agentName, `Hello, I'm testing the ${agentName} agent. Can you introduce yourself and your capabilities?`);
+  }
+  
+  console.log('✅ All agent tests completed!\n');
+}
+
+/**
+ * Quick CLI command examples for testing the streamText functionality
+ * 
+ * Use these commands to quickly test your agents:
+ * 
+ * @example
+ * 
+ * // Test supervisor chat
+ * node -e "import('./dist/index.js').then(m => m.chat('Hello, can you help me analyze some data?'))"
+ * 
+ * // Test specific agent
+ * node -e "import('./dist/index.js').then(m => m.chatWithAgent('dataAnalyst', 'Analyze the sales trends'))"
+ * 
+ * // Start interactive session
+ * node -e "import('./dist/index.js').then(m => m.startChatSession())"
+ * 
+ * // Test all agents
+ * node -e "import('./dist/index.js').then(m => m.testAllAgents())"
+ * 
+ */

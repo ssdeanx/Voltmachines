@@ -18,6 +18,21 @@
 
 import { LibSQLStorage } from "@voltagent/core";
 import { vectorMemory, VectorMemory } from "./vectorMemory.js";
+import { mkdir } from "fs/promises";
+import { dirname } from "path";
+
+// Ensure database directory exists
+async function ensureDatabaseDirectory(databaseUrl: string) {
+  if (databaseUrl.startsWith('file:')) {
+    const dbPath = databaseUrl.replace('file:', '');
+    const dbDir = dirname(dbPath);
+    try {
+      await mkdir(dbDir, { recursive: true });
+    } catch {
+      // Directory might already exist, ignore error
+    }
+  }
+}
 
 /**
  * System configuration for VoltAgent memory subsystem.
@@ -35,8 +50,11 @@ const memoryConfig = {
   /** Maximum number of messages to store per conversation */
   storageLimit: 5000,
   /** Enable debug logging for memory operations */
-  debug: true,
+  debug: false, // Set to false to reduce verbose logging that might cause issues
 };
+
+// Initialize database directory
+await ensureDatabaseDirectory(memoryConfig.databaseUrl);
 
 /**
  * Official VoltAgent LibSQL Memory Storage instance with vector search capabilities.
